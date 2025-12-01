@@ -1,143 +1,130 @@
-# Multi-Region EHR API
+# Multi Region EHR API (Prototype)
 
-A cross-border health record **prototype** designed to respect **GDPR** and keep patient data inside its country of origin. It follows simplified **FHIR R4** structures and uses **SNOMED codes** where relevant. The aim is to show how a **federated model** can work across the UK, Germany, and France without centralising clinical data.
+A cross border health record prototype designed to respect **GDPR** and **NHS DSPT** requirements. It follows simplified **FHIR R4 structures** and uses **SNOMED CT codes** where relevant.  
+The aim is to demonstrate how a federated model can allow clinicians in the UK, Germany, and France to locate and view records without centralising clinical data.
 
 ---
 
 ## 1. Overview
 
-Sharing healthcare data across countries is complicated. This project takes a practical approach: **keep data in the patient’s home region**, but still allow clinicians to locate and view records when needed. It acts as a lightweight **Master Patient Index (MPI)** that links the same person across regions without exposing raw identifiers.
+Sharing healthcare data across countries is complicated. This project takes a practical approach: **keep data in the patient’s home region**, while allowing clinicians to locate and view records when needed.
 
-The system is **serverless**, built fully on **AWS**, with regional **DynamoDB** tables for medical data and a central MPI storing only **pseudonymised pointers**.
+* **Federated Master Patient Index (MPI):** Links the same person across regions without exposing raw identifiers.
+* **Serverless Architecture:** Built fully on AWS (Lambda, API Gateway, DynamoDB).
+* **Data Residency:** Regional DynamoDB tables store medical data; the Global MPI stores *only* pseudonymized pointers.
+* **Transient Access:** Data is merged **in memory only** during a session and never persisted cross‑border.
 
 ---
 
 ## 2. Core Architectural Strategy
 
-To comply with **GDPR** and **FHIR** expectations, the design separates patient identity from clinical content:
-
-* **Regional Vaults:** Each country (UK/DE/FR) has its own **DynamoDB** table holding Patient, Encounter, and Observation resources. **No medical data leaves the region at rest.**
-* **Master Patient Index:** A **DynamoDB Global Table** storing internal **UUID** links between regions. No clinical data or raw national IDs are stored here.
-* **Secure Linking:** A **Lambda** function hashes national IDs using a salt stored in **Secrets Manager**. Only the hash is used for MPI lookups.
-* **Network Security:** All internal service calls flow through **VPC Endpoints (PrivateLink)** to keep traffic off the public internet.
+* **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB tables for Patient, Encounter, and Observation resources.  
+* ** Master Patient Index (MPI):** DynamoDB Global Table storing only pseudonymised pointers (hashes + UUIDs).  
+* **Secure Linking:** Lambda functions hash national IDs using a salt stored in **AWS Secrets Manager**.  
+* **Network Security:** All service calls flow through **VPC Endpoints (PrivateLink)**. Each region runs inside its own VPC with private subnets.
+* **Access Control:** DynamoDB access is strictly limited via IAM Policies and VPC Endpoint policies (no public internet access).
 
 ---
 
 ## 3. Main Technologies
 
 ### Authentication & Access Control
-* **Amazon Cognito** (User Pools + RBAC)
+* **Amazon Cognito:** User Pools with RBAC (Groups: Clinician, Auditor, Admin). MFA enforced for clinicians.
 
 ### Edge Layer
-* **Amazon CloudFront** + **AWS WAF** (geo controls)
+* **Amazon CloudFront + AWS WAF:** Geo-blocking and protection for the frontend/API.
 
 ### API Layer
-* **API Gateway** (REST) with Cognito authorisation
+* **Amazon API Gateway:** Regional REST APIs with Cognito authorizers.
 
-### Compute (Lambda Microservices)
-* **Search Service:** Handles ID hashing and MPI lookups.
-* **CRUD Lambdas:** For Patient, Encounter, and Observation resources.
-* **Analysis Lambda:** For extracting clinical insights using **Comprehend Medical**.
+### Compute
+* **Search Service:** Lambda (Python) for ID hashing and MPI lookup.
+* **CRUD Services:** Lambdas for Patient, Encounter, and Observation operations.
+* **Analysis Service:** Triggered by DynamoDB Streams (stubbed for Comprehend Medical).
 
 ### Storage
-* **DynamoDB** regional tables (for clinical data)
-* **DynamoDB Global Table** (for the MPI)
+* **DynamoDB Regional Tables:** Stores clinical data (encrypted with regional CMKs).
+* **DynamoDB Global Table:** Stores the MPI (pseudonymized).
 
 ### Security
-* **AWS KMS** (for encryption at rest)
-* **AWS Secrets Manager** (for salts and tokens)
+* **AWS KMS:** Regional Customer Managed Keys (CMKs) for encryption at rest.
+* **AWS Secrets Manager:** Secure storage for salts and API tokens.
 
 ### Logging & Audit
-* **Amazon S3** (for logs)
-* **AWS CloudTrail** (for access auditing)
+* **Amazon S3:** Centralized log storage with Object Lock for immutability.
+* **AWS CloudTrail:** Full API auditing with 7–10 year retention policies.
 
 ---
 
-## 4. Data Flow (The Clinic Visit)
+## 4. Data Flow (Clinic Visit)
 
-1.  A patient arrives and informs the clinician that they have a medical record in another supported country.
-2.  The clinician enters the patient’s foreign **National Health ID**.
-3.  The **Search Lambda** retrieves the hashing salt, hashes the ID, and queries the **MPI**.
-4.  If a match is found, the system fetches relevant clinical data from that country’s regional table.
-5.  Records are **merged in memory** and shown to the clinician. **Nothing is written centrally.**
-6.  When new notes are added, **DynamoDB Streams** trigger the **Analysis Lambda**, which uses services like **Comprehend Medical** to extract coded insights.
-7.  The frontend application aggregates these insights into a **visual clinical timeline**, allowing doctors to spot cross-border patterns (e.g., recurring symptoms) directly in the browser without persisting data centrally.
+1.  **Patient Identification:** Patient arrives and informs the clinician of records in another country.
+2.  **Search:** Clinician enters the foreign National Health ID.
+3.  **Hash & Lookup:** Search Lambda retrieves the salt, hashes the ID, and queries the MPI.
+4.  **Federated Retrieval:** If a match is found, the system fetches relevant clinical data from that specific country’s regional table.
+5.  **Aggregation:** Records are merged **in memory** and displayed to the clinician. **Nothing is written centrally.**
+6.  **Analysis:** New notes trigger DynamoDB Streams → Analysis Lambda → Coded insights.
+7.  **Visualization:** Frontend aggregates insights into a clinical timeline (browser-side only).
+8.  **Creation:** New records are stored only in the region where they are created, maintaining strict data sovereignty.
+9.  **Audit:** Logs are stored in both the requesting region (access) and the source region (data retrieval).
 
 ---
 
 ## 5. Project Structure
 
-.
-├── terraform/ # IaC definitions
-│ ├── regions/
-│ │ ├── germany/
-│ │ ├── france/
-│ │ └── uk/
-│ └── mpi/ # Master Patient Index
-├── lambda/
-│ ├── search_service/ # Hash + MPI lookup
-│ ├── patient_crud/
-│ ├── encounter_crud/
-│ └── observation_crud/
-├── diagrams/ # Architecture diagrams
-└── README.md
+. ├── terraform/ # Infrastructure as Code (Multi-region setup) ├── data/ # Sample FHIR JSON records ├── dynamodb/ # Table schema definitions (JSON) ├── lambda/ # Python handler code ├── api-gateway/ # OpenAPI specifications ├── secrets/ # Placeholder salt (replaced by Secrets Manager in prod) ├── diagrams/ # Architecture diagrams └── README.md # Project overview & compliance notes
 
 ---
 
 ## 6. Development & Operations
 
-* **Infrastructure as Code:** **Terraform** manages all infrastructure.
-* **CI/CD Pipeline:** **GitHub Actions** handles testing and deployment.
-* **Monitoring:** **CloudWatch** for metrics and logs; **CloudTrail** for audit trails.
+* **Infrastructure as Code:** Terraform manages all resources.
+* **CI/CD Pipeline:** GitHub Actions for automated testing and deployment.
+* **Monitoring:** CloudWatch Metrics/Logs and CloudTrail.
+* **Integration Tests:** Validates logic using mock FHIR data.
+* **Policy Enforcement:** Deny-by-default IAM policies; every read/write action logs "Purpose of Use".
 
 ---
 
-## 7. Production Readiness: Target Multi-Account Strategy
+## 7. Production Readiness
 
-### 7.1 Multi-Account Strategy (Security & Governance)
-While this prototype leverages **Multi-Region** isolation within a single AWS account for demonstration purposes, a real-world production deployment would utilize **AWS Organizations** to enforce strict account-level isolation.
+**Multi Account Strategy (AWS Organizations):**
+* **Security OU:** GuardDuty, Security Hub, Incident Response environments.
+* **Log/Archive OU:** Immutable storage for CloudTrail & Config archives.
+* **Workloads OU:** Isolated Production accounts for UK, FR, and DE (Strict Data Residency).
+* **Research OU:** De identified data lake for population health analytics.
 
-The following Organizational Unit (OU) structure ensures **GDPR compliance**, minimize **blast radius**, and enforce **Separation of Duties**:
-
-Root
- ├── Security OU
- │    ├── Security-Tooling (GuardDuty, Security Hub aggregation)
- │    └── Incident-Response (Forensics environment)
- │
- ├── Log/Archive OU
- │    └── Logs-Audit (Immutable CloudTrail & Config archives)
- │
- ├── Workloads OU (Isolated by Sovereignty)
- │    ├── UK-Prod-Account
- │    ├── DE-Prod-Account (Strict Data Residency)
- │    ├── FR-Prod-Account
- │    └── Shared-Network-Services (Transit Gateway / Direct Connect)
- │
- ├── Research OU
- │    └── Research-Lake (De-identified data analysis)
- │
- └── Sandbox OU
-      └── Developer-Sandboxes
-
-### 7.2Application Hardening (Reliability & Performance)
-To meet enterprise SLAs, the following architectural enhancements are designed for the production release:
-* **Resilience & Fault Tolerance:** Implement **Amazon SQS Dead Letter Queues (DLQs)** and automated retry policies for the Analysis service to ensure zero data loss during downstream processing failures.
-* **Performance Tuning:** Configure **Provisioned Concurrency** for the Search Lambda to eliminate cold starts, guaranteeing consistent low-latency lookups for clinicians during peak hours.
+**Application Hardening:**
+* **Resilience:** SQS Dead Letter Queues (DLQs) and automated retry policies.
+* **Performance:** Provisioned Concurrency for search Lambdas to reduce cold starts.
+* **Protection:** Rate limiting, request validation, and strict payload size limits.
 
 ---
 
-## 8. Future Work
+## 8. Compliance Features
 
-* **Health Analytics:**  **Amazon QuickSight** dashboards visualising condition-specific clinical summaries across regions.
-
-* **Research Data Lake:** A secondary, anonymised data store in **S3** populated via DynamoDB Streams for medical research.
-
-* **Real-time Clinical Alerts:** **EventBridge** alerting system to notify clinicians of critical events (abnormal observation values, etc).
-
-* **Enhanced Identification:** Support for alternative identifiers (e.g. passport numbers) to facilitate patient matching in emergency scenarios.
+* **Data Isolation:** Separate databases and keys per region.
+* **Cross Border Access:** Federated API only; no raw data is stored globally.
+* **Immutable Auditing:** CloudTrail + S3 Object Lock (WORM).
+* **Encryption:** Customer Managed Keys (CMK) per region; TLS 1.2+ in transit.
+* **Right to Erasure:** Automated workflows to delete patient data upon request.
+* **SNOMED + FHIR:** Structured resources, coded entries  
+* **Admin access:** Strict IAM roles, MFA enforced  
+* **UK vs EU Nuance:**
+    * **UK (NHS DSPT):** Focus on "Zero Trust," strict auditing, and data minimization.
+    * **EU (GDPR):** Focus on "Right to be Forgotten" and data residency.
 
 ---
 
-## 9. License
+## 9. Future Work
+* **Expanded FHIR Support:** Condition, Consent, MedicationRequest resources.
+* **Clinical Coding:** Real SNOMED CT examples (Asthma, MRI codes).
+* **Analytics:** QuickSight dashboards for anonymized population health trends.
+* **Alerting:** EventBridge/SNS notifications for critical observation values.
+* **Frontend:** A clinician-facing UI (S3 + CloudFront + Cognito).
+* **AI Integration:** Summarizing medical records and auto-matching patients across borders.
 
+---
+
+## 10. License
 MIT
