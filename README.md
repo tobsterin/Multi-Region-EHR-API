@@ -73,13 +73,21 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 ## 5. Project Structure
 
 .
+
 ├── terraform/         # Infrastructure as Code (multi‑region setup)
+
 ├── data/              # Sample FHIR JSON records
+
 ├── dynamodb/          # Table schema definitions (JSON)
+
 ├── lambda/            # Python handler code
+
 ├── api-gateway/       # OpenAPI specifications
+
 ├── secrets/           # Placeholder salt (replaced by Secrets Manager in prod)
+
 ├── diagrams/          # Architecture diagrams
+
 └── README.md          # Project overview & compliance notes
 
 ---
@@ -152,9 +160,9 @@ Key threats and mitigations:
 * **Frontend:** A clinician-facing UI (S3 + CloudFront + Cognito).
 * **AI Integration:** The long term goal is to provide clinicians with **on demand clinical insights**, not just raw records. This includes:
     * **Longitudinal Pattern Detection:** Identify recurring issues (e.g., repeated respiratory complaints over several years) and highlight trends that may influence diagnosis.
-    * **Cross Border Clinical Context: ** Use Comprehend Medical to extract conditions, symptoms, medications, and procedures from foreign language notes, reducing language barriers and improving continuity of care.
-    * **Symptom Correlation & Risk Flags: ** Detect combinations of symptoms or historical events that may indicate alternative diagnoses or require urgent attention.
-    * **Visual Clinical Timeline: ** Provide a timeline view (QuickSight or custom frontend) showing encounters, observations, medications, and major events across regions.
+    * **Cross Border Clinical Context:** Use Comprehend Medical to extract conditions, symptoms, medications, and procedures from foreign language notes, reducing language barriers and improving continuity of care.
+    * **Symptom Correlation & Risk Flags:** Detect combinations of symptoms or historical events that may indicate alternative diagnoses or require urgent attention.
+    * **Visual Clinical Timeline:** Provide a timeline view (QuickSight or custom frontend) showing encounters, observations, medications, and major events across regions.
     * **On Demand Summaries:** Generate concise summaries of the patient’s history to reduce clinician workload and avoid missed details.
 
 
