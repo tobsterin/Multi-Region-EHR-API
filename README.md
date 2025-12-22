@@ -19,7 +19,7 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 ## 2. Core Architectural Strategy
 
 * **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB tables for Patient, Encounter, and Observation resources.  
-* ** Master Patient Index (MPI):** DynamoDB Global Table storing only pseudonymised pointers (hashes + UUIDs).  
+* **Master Patient Index (MPI):** DynamoDB Global Table storing only pseudonymised pointers (hashes + UUIDs).  
 * **Secure Linking:** Lambda functions hash national IDs using a salt stored in **AWS Secrets Manager**.  
 * **Network Security:** All service calls flow through **VPC Endpoints (PrivateLink)**. Each region runs inside its own VPC with private subnets.
 * **Access Control:** DynamoDB access is strictly limited via IAM Policies and VPC Endpoint policies (no public internet access).
@@ -72,7 +72,15 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 
 ## 5. Project Structure
 
-. ├── terraform/ # Infrastructure as Code (Multi-region setup) ├── data/ # Sample FHIR JSON records ├── dynamodb/ # Table schema definitions (JSON) ├── lambda/ # Python handler code ├── api-gateway/ # OpenAPI specifications ├── secrets/ # Placeholder salt (replaced by Secrets Manager in prod) ├── diagrams/ # Architecture diagrams └── README.md # Project overview & compliance notes
+.
+├── terraform/         # Infrastructure as Code (multi‑region setup)
+├── data/              # Sample FHIR JSON records
+├── dynamodb/          # Table schema definitions (JSON)
+├── lambda/            # Python handler code
+├── api-gateway/       # OpenAPI specifications
+├── secrets/           # Placeholder salt (replaced by Secrets Manager in prod)
+├── diagrams/          # Architecture diagrams
+└── README.md          # Project overview & compliance notes
 
 ---
 
@@ -116,15 +124,41 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 
 ---
 
-## 9. Future Work
+## 9. Threat Model
+
+This prototype follows a **Zero Trust** approach and assumes that every identity, device, and network path may be compromised unless explicitly verified.
+Key threats and mitigations:
+* **Unauthorized Access to Clinical Data**
+       Mitigation: IAM least privilege, Cognito MFA, role based access (clinician vs auditor vs receptionist).
+* **Cross Region Data Leakage**
+       Mitigation: No raw data stored globally; only pseudonymised MPI pointers cross borders; data decrypted only in its home region.
+* **Account or Credential Compromise**
+       Mitigation: CloudTrail auditing, S3 Object Lock, automated alerts (SNS/SQS), and Lambda workflows to revoke access.
+* **Lateral Movement Across Regions**
+       Mitigation: Separate VPCs (prototype) or separate AWS accounts (production), no direct cross account access, private API Gateway endpoints only.
+* **Service Exposure to the Public Internet**
+       Mitigation: Lambdas run in private subnets, DynamoDB/S3 accessed only via VPC Endpoints, API Gateway protected by WAF and Cognito.
+* **Data Tampering or Loss**
+       Mitigation: KMS encryption per region, DynamoDB point in time recovery, immutable audit logs.
+
+---
+
+## 10. Future Work
+
 * **Expanded FHIR Support:** Condition, Consent, MedicationRequest resources.
 * **Clinical Coding:** Real SNOMED CT examples (Asthma, MRI codes).
 * **Analytics:** QuickSight dashboards for anonymized population health trends.
 * **Alerting:** EventBridge/SNS notifications for critical observation values.
 * **Frontend:** A clinician-facing UI (S3 + CloudFront + Cognito).
-* **AI Integration:** Summarizing medical records and auto-matching patients across borders.
+* **AI Integration:** The long term goal is to provide clinicians with **on demand clinical insights**, not just raw records. This includes:
+    * **Longitudinal Pattern Detection:** Identify recurring issues (e.g., repeated respiratory complaints over several years) and highlight trends that may influence diagnosis.
+    * **Cross Border Clinical Context: ** Use Comprehend Medical to extract conditions, symptoms, medications, and procedures from foreign language notes, reducing language barriers and improving continuity of care.
+    * **Symptom Correlation & Risk Flags: ** Detect combinations of symptoms or historical events that may indicate alternative diagnoses or require urgent attention.
+    * **Visual Clinical Timeline: ** Provide a timeline view (QuickSight or custom frontend) showing encounters, observations, medications, and major events across regions.
+    * **On Demand Summaries:** Generate concise summaries of the patient’s history to reduce clinician workload and avoid missed details.
+
 
 ---
 
-## 10. License
+## 11. License
 MIT
