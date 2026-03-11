@@ -2,7 +2,7 @@ import json
 import boto3
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('encounter-uk')
+table = dynamodb.Table('observation-uk')
 
 def lambda_handler(event, context):
     # To handle both direct test events and API Gateway requests
@@ -12,16 +12,17 @@ def lambda_handler(event, context):
     
     resource_type = event.get("resourceType")
 
-    if resource_type == "Encounter":
+    if resource_type == "Observation":
         item = {
             "PK": f"PATIENT#{event['subject']['reference'].split('/')[1]}",
-            "SK": f"ENCOUNTER#{event['id']}",
-            "resourceType": "Encounter",
+            "SK": f"OBSERVATION#{event['id']}",
+            "resourceType": "Observation",
             "status": event["status"],
-            "type": event["type"][0]["text"],
-            "start": event["period"]["start"],
-            "end": event["period"]["end"],
-            "serviceProvider": event["serviceProvider"]["display"]
+            "category": event["category"][0]["coding"][0]["display"],
+            "code": event["code"]["coding"][0]["display"],
+            "encounter": event["encounter"]["reference"],
+            "effectiveDateTime": event["effectiveDateTime"],
+            "components": json.dumps(event["component"])
         }
     else:
         return {
