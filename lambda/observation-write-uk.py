@@ -2,7 +2,7 @@ import json
 import boto3
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('observation-uk')
+table = dynamodb.Table('observations-uk')
 
 def lambda_handler(event, context):
     # To handle both direct test events and API Gateway requests
