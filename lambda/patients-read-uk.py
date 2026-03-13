@@ -5,7 +5,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('patients-uk')
 
 def lambda_handler(event, context):
-    patient_id = event['pathParameters']['id']
+    patient_id = event['pathParameters']['patient_id']
     response = table.get_item(Key={
         "PK": f"PATIENT#{patient_id}",
         "SK": "METADATA"
