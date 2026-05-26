@@ -11,7 +11,7 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 
 * **Federated Master Patient Index (MPI):** Links the same person across regions without exposing raw identifiers.
 * **Serverless Architecture:** Built fully on AWS (Lambda, API Gateway, DynamoDB).
-* **Data Residency:** Regional DynamoDB tables store medical data; the Global MPI stores *only* pseudonymized pointers.
+* **Data Residency:** Regional DynamoDB tables store medical data; the Global MPI stores *only* pseudonymised pointers.
 * **Transient Access:** Data is merged **in memory only** during a session and never persisted cross‑border.
 
 ---
@@ -44,14 +44,14 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 
 ### Storage
 * **DynamoDB Regional Tables:** Stores clinical data (encrypted with regional CMKs).
-* **DynamoDB Global Table:** Stores the MPI (pseudonymized).
+* **DynamoDB Global Table:** Stores the MPI (pseudonymised).
 
 ### Security
 * **AWS KMS:** Regional Customer Managed Keys (CMKs) for encryption at rest.
 * **AWS Secrets Manager:** Secure storage for salts and API tokens.
 
 ### Logging & Audit
-* **Amazon S3:** Centralized log storage with Object Lock for immutability.
+* **Amazon S3:** Centralised log storage with Object Lock for immutability.
 * **AWS CloudTrail:** Full API auditing with 7–10 year retention policies.
 
 ---
