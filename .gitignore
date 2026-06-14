@@ -1,4 +1,12 @@
 .DS_Store
---pycache--/
+__pycache__/
 *.pyc
 .env
+*.tfstate
+*.tfstate.*
+**/.terraform/*
+override.tf
+*_override.tf
+crash.log
+*.tfvars
+*.auto.tfvars
