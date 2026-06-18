@@ -10,17 +10,17 @@ provider "aws" {
     }
   }
 }
-module "regional-vault-uk" {
+module "regional_vault_uk" {
   source     = "./modules/regional_vault"
   table_name = "patients-uk"
 }
 
-module "regional-vault-de" {
+module "regional_vault_de" {
   source     = "./modules/regional_vault"
   table_name = "patients-de"
 }
 
-module "regional-vault-fr" {
+module "regional_vault_fr" {
   source     = "./modules/regional_vault"
   table_name = "patients-fr"
 }
