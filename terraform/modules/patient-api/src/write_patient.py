@@ -1,8 +1,9 @@
 import json
 import boto3
+import os
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('patients-uk')
+table = dynamodb.Table(os.environ['TABLE_NAME'])
 
 def lambda_handler(event, context):
     # To handle both direct test events and API Gateway requests
@@ -14,8 +15,7 @@ def lambda_handler(event, context):
 
     if resource_type == "Patient":
         item = {
-            "PK": f"PATIENT#{event['id']}",
-            "SK": "METADATA",
+            "patient_id": event['id'],
             "resourceType": "Patient",
             "name": f'{event["name"][0]["family"]}, {" ".join(event["name"][0]["given"])}',
             "nhsNumber": event["identifier"][0]["value"],

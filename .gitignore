@@ -10,3 +10,4 @@ override.tf
 crash.log
 *.tfvars
 *.auto.tfvars
+dist/
