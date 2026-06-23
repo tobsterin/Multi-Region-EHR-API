@@ -18,11 +18,11 @@ def lambda_handler(event, context):
         item = {
             "patient_id": event['id'],
             "resourceType": "Patient",
-            "name": f'{event["name"][0]["family"]}, {" ".join(event["name"][0]["given"])}',
+            "name": event["name"],
             "nationalId": event["identifier"][0]["value"],
             "gender": event["gender"],
             "birthDate": event["birthDate"],
-            "address": f'{", ".join(event["address"][0]["line"])}, {event["address"][0]["city"]}, {event["address"][0]["postalCode"]}, {event["address"][0]["country"]}',
+            "address": event["address"],
             "generalPractitioner": event["generalPractitioner"][0]["display"]
         }
         # To prevent accidental overwrite
