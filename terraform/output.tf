@@ -1,3 +1,20 @@
+#mpi_url:
+output "table_arn_global" {
+  description = "The ARN of the global DynamoDB table."
+  value       = module.mpi_table.table_arn
+}
+output "mpi_api_url_de" {
+  value = module.mpi_api_de.mpi_api_url
+}
+output "mpi_api_url_fr" {
+  value = module.mpi_api_fr.mpi_api_url
+}
+output "mpi_api_url_uk" {
+  value = module.mpi_api_uk.mpi_api_url
+}
+
+
+#patient_url:
 output "table_name_de" {
   description = "The name of the DynamoDB table in the DE region."
   value       = module.regional_vault_de.table_name

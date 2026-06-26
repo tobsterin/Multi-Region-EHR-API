@@ -1,3 +1,31 @@
+# Global MPI (master patient index) and regional APIs:
+module "mpi_table" {
+  source    = "./modules/mpi-table"
+  providers = { aws = aws.uk } # primary region; replicas handle de/fr
+}
+
+module "mpi_api_uk" {
+  source        = "./modules/mpi-api"
+  region_suffix = "uk"
+  table_arn     = module.mpi_table.table_arn
+  providers     = { aws = aws.uk }
+}
+module "mpi_api_de" {
+  source        = "./modules/mpi-api"
+  region_suffix = "de"
+  table_arn     = module.mpi_table.table_arn
+  providers     = { aws = aws.de }
+}
+module "mpi_api_fr" {
+  source        = "./modules/mpi-api"
+  region_suffix = "fr"
+  table_arn     = module.mpi_table.table_arn
+  providers     = { aws = aws.fr }
+}
+
+
+
+# Regional patient vaults and APIs:
 provider "aws" {
   alias  = "de"
   region = "eu-central-1"
