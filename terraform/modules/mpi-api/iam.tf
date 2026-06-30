@@ -70,16 +70,24 @@ resource "aws_iam_role_policy" "mpi_write_lambda_policy" {
           "dynamodb:PutItem",
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:dynamodb:*:881226714547:table/mpi_global_table"
+        Resource = [          
+          "arn:aws:dynamodb:eu-west-2:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:eu-central-1:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:eu-west-3:${data.aws_caller_identity.current.account_id}:table/mpi_global_table"
+        ]
       },
       {
         Action = [
           "dynamodb:Query"
         ]
         Effect   = "Allow"
-        Resource = [
-          "arn:aws:dynamodb:*:881226714547:table/mpi_global_table",
-          "arn:aws:dynamodb:*:881226714547:table/mpi_global_table/index/*"
+        Resource = [          
+          "arn:aws:dynamodb:eu-west-2:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:eu-central-1:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:eu-west-3:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:eu-west-2:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*",
+          "arn:aws:dynamodb:eu-central-1:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*",
+          "arn:aws:dynamodb:eu-west-3:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*",
         ]
       },
       {

@@ -1,3 +1,6 @@
+# Account
+data "aws_caller_identity" "current" {}
+
 # Global MPI (master patient index) and regional APIs:
 module "mpi_table" {
   source    = "./modules/mpi-table"
