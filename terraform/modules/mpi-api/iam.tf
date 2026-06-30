@@ -1,3 +1,6 @@
+# Account
+data "aws_caller_identity" "current" {}
+
 # read lambda role and policy:
 resource "aws_iam_role" "mpi_read_lambda_role" {
   name = "mpi_read_lambda_role-${var.region_suffix}"
