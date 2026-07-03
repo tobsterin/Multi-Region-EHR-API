@@ -4,23 +4,46 @@ module "mpi_table" {
   providers = { aws = aws.uk } # primary region; replicas handle de/fr
 }
 
-module "mpi_api_uk" {
-  source        = "./modules/mpi-api"
-  region_suffix = "uk"
-  table_arn     = module.mpi_table.table_arn
-  providers     = { aws = aws.uk }
-}
 module "mpi_api_de" {
   source        = "./modules/mpi-api"
   region_suffix = "de"
   table_arn     = module.mpi_table.table_arn
   providers     = { aws = aws.de }
 }
+module "mpi_registrar_de" {
+  source             = "./modules/mpi-registrar"
+  table_arn          = module.mpi_table.table_arn
+  dynamodbstream_arn = module.regional_vault_de.stream_arn
+  region_suffix      = "de"
+  providers          = { aws = aws.de }
+}
+
 module "mpi_api_fr" {
   source        = "./modules/mpi-api"
   region_suffix = "fr"
   table_arn     = module.mpi_table.table_arn
   providers     = { aws = aws.fr }
+}
+module "mpi_regitrar_fr" {
+  source             = "./modules/mpi-registrar"
+  table_arn          = module.mpi_table.table_arn
+  dynamodbstream_arn = module.regional_vault_fr.stream_arn
+  region_suffix      = "fr"
+  providers          = { aws = aws.fr }
+}
+
+module "mpi_api_uk" {
+  source        = "./modules/mpi-api"
+  region_suffix = "uk"
+  table_arn     = module.mpi_table.table_arn
+  providers     = { aws = aws.uk }
+}
+module "mpi_regitrar_uk" {
+  source             = "./modules/mpi-registrar"
+  table_arn          = module.mpi_table.table_arn
+  dynamodbstream_arn = module.regional_vault_uk.stream_arn
+  region_suffix      = "uk"
+  providers          = { aws = aws.uk }
 }
 
 

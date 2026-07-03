@@ -23,7 +23,8 @@ def lambda_handler(event, context):
             "gender": event["gender"],
             "birthDate": event["birthDate"],
             "address": event["address"],
-            "generalPractitioner": event["generalPractitioner"][0]["display"]
+            "generalPractitioner": event["generalPractitioner"][0]["display"],
+            "knownForeignIds": event.get("knownForeignIds", [])
         }
         # To prevent accidental overwrite
         try:
