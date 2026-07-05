@@ -4,6 +4,10 @@ data "archive_file" "mpi_read_lambda_zip" {
   output_path = "${path.module}/dist/read_mpi.zip"
 }
 
+data "aws_ssm_parameter" "salt" {
+  name = "/mpi/salt"
+}
+
 resource "aws_lambda_function" "mpi_read_lambda" {
   function_name    = "mpi-read-lambda-${var.region_suffix}"
   role             = aws_iam_role.mpi_read_lambda_role.arn
