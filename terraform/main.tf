@@ -24,7 +24,7 @@ module "mpi_api_fr" {
   table_arn     = module.mpi_table.table_arn
   providers     = { aws = aws.fr }
 }
-module "mpi_regitrar_fr" {
+module "mpi_registrar_fr" {
   source             = "./modules/mpi-registrar"
   table_arn          = module.mpi_table.table_arn
   dynamodbstream_arn = module.regional_vault_fr.stream_arn
@@ -38,7 +38,7 @@ module "mpi_api_uk" {
   table_arn     = module.mpi_table.table_arn
   providers     = { aws = aws.uk }
 }
-module "mpi_regitrar_uk" {
+module "mpi_registrar_uk" {
   source             = "./modules/mpi-registrar"
   table_arn          = module.mpi_table.table_arn
   dynamodbstream_arn = module.regional_vault_uk.stream_arn
@@ -78,7 +78,6 @@ provider "aws" {
 provider "aws" {
   alias  = "uk"
   region = "eu-west-2"
-
   default_tags {
     tags = {
       Environment = var.environment
