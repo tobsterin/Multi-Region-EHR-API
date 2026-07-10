@@ -1,3 +1,9 @@
+# cognito user pool and client for authentication:
+module "cognito" {
+  source = "./modules/cognito"
+  providers = { aws = aws.uk }
+}
+
 # Global MPI (master patient index) and regional APIs:
 module "mpi_table" {
   source    = "./modules/mpi-table"
@@ -8,6 +14,8 @@ module "mpi_api_de" {
   source        = "./modules/mpi-api"
   region_suffix = "de"
   table_arn     = module.mpi_table.table_arn
+  cognito_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_id = module.cognito.cognito_user_pool_id
   providers     = { aws = aws.de }
 }
 module "mpi_registrar_de" {
@@ -22,6 +30,8 @@ module "mpi_api_fr" {
   source        = "./modules/mpi-api"
   region_suffix = "fr"
   table_arn     = module.mpi_table.table_arn
+  cognito_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_id = module.cognito.cognito_user_pool_id
   providers     = { aws = aws.fr }
 }
 module "mpi_registrar_fr" {
@@ -36,6 +46,8 @@ module "mpi_api_uk" {
   source        = "./modules/mpi-api"
   region_suffix = "uk"
   table_arn     = module.mpi_table.table_arn
+  cognito_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_id = module.cognito.cognito_user_pool_id
   providers     = { aws = aws.uk }
 }
 module "mpi_registrar_uk" {
@@ -97,6 +109,8 @@ module "patient_api_de" {
   source        = "./modules/patient-api"
   table_name    = module.regional_vault_de.table_name
   table_arn     = module.regional_vault_de.table_arn
+  cognito_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_id = module.cognito.cognito_user_pool_id
   region_suffix = "de"
   providers     = { aws = aws.de }
 }
@@ -110,6 +124,8 @@ module "patient_api_fr" {
   source        = "./modules/patient-api"
   table_name    = module.regional_vault_fr.table_name
   table_arn     = module.regional_vault_fr.table_arn
+  cognito_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_id = module.cognito.cognito_user_pool_id
   region_suffix = "fr"
   providers     = { aws = aws.fr }
 }
@@ -123,6 +139,8 @@ module "patient_api_uk" {
   source        = "./modules/patient-api"
   table_name    = module.regional_vault_uk.table_name
   table_arn     = module.regional_vault_uk.table_arn
+  cognito_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_id = module.cognito.cognito_user_pool_id
   region_suffix = "uk"
   providers     = { aws = aws.uk }
 }
