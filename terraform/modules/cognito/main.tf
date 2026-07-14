@@ -18,3 +18,16 @@ resource "aws_cognito_user_pool_client" "cognito_user_pool_client" {
     "ALLOW_USER_SRP_AUTH"
   ]
 }
+
+# cognito groups
+resource "aws_cognito_user_group" "cognito_user_pool_group_clinicians" {
+  name         = "clinicians"
+  user_pool_id = aws_cognito_user_pool.cognito_user_pool.id
+  description  = "Group for clinicians"
+}
+
+resource "aws_cognito_user_group" "cognito_user_pool_group_auditors" {
+  name         = "auditors"
+  user_pool_id = aws_cognito_user_pool.cognito_user_pool.id
+  description  = "Group for auditors"
+}

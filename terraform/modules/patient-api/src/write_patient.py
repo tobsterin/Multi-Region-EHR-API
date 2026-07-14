@@ -3,20 +3,29 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['TABLE_NAME'])
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table(os.environ["TABLE_NAME"])
 
 def lambda_handler(event, context):
-    # To handle both direct test events and API Gateway requests
-    if 'body' in event:
-        event = json.loads(event['body'])
+    # check cognito group
+    auth = event.get("requestContext", {}).get("authorizer", {})
+    claims = auth.get("jwt", {}).get("claims") or auth.get("claims", {})
+    cognito_groups = claims.get("cognito:groups", "")
+    if "clinicians" not in cognito_groups:
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"error": "User is not authorized to perform this action"})
+        }
+    
+    if "body" in event:
+        event = json.loads(event["body"])
     print("Received event:", json.dumps(event))
     
     resource_type = event.get("resourceType")
 
     if resource_type == "Patient":
         item = {
-            "patient_id": event['id'],
+            "patient_id": event["id"],
             "resourceType": "Patient",
             "name": event["name"],
             "nationalId": event["identifier"][0]["value"],
@@ -33,7 +42,7 @@ def lambda_handler(event, context):
                 ConditionExpression="attribute_not_exists(patient_id)"
             )
         except ClientError as e:
-            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return {
                     "statusCode": 409,
                     "body": json.dumps({"error": "Patient already exists"})

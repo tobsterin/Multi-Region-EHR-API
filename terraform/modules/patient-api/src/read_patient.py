@@ -6,6 +6,16 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
 
 def lambda_handler(event, context):
+    # check cognito group
+    auth = event.get("requestContext", {}).get("authorizer", {})
+    claims = auth.get("jwt", {}).get("claims") or auth.get("claims", {})
+    cognito_groups = claims.get("cognito:groups", "")
+    if "clinicians" not in cognito_groups:
+        return {
+            "statusCode": 403,
+            "body": json.dumps({"error": "User is not authorized to perform this action"})
+        }
+    
     patient_id = event.get('pathParameters', {}).get('patient_id')
     response = table.get_item(Key={
         "patient_id": patient_id
