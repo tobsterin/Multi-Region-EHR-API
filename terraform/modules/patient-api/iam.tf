@@ -38,7 +38,7 @@ resource "aws_iam_role_policy" "patient_read_lambda_policy" {
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = aws_cloudwatch_log_group.patient_read_lambda_log_group.arn
+        Resource = "${aws_cloudwatch_log_group.patient_read_lambda_log_group.arn}:*"
       }
     ]
   })
@@ -85,7 +85,7 @@ resource "aws_iam_role_policy" "patient_write_lambda_policy" {
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = aws_cloudwatch_log_group.patient_write_lambda_log_group.arn
+        Resource = "${aws_cloudwatch_log_group.patient_write_lambda_log_group.arn}:*"
       }
     ]
   })
@@ -132,7 +132,7 @@ resource "aws_iam_role_policy" "patient_update_lambda_policy" {
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = aws_cloudwatch_log_group.patient_update_lambda_log_group.arn
+        Resource = "${aws_cloudwatch_log_group.patient_update_lambda_log_group.arn}:*"
       }
     ]
   })

@@ -38,7 +38,7 @@ resource "aws_iam_role_policy" "mpi_read_lambda_policy" {
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = aws_cloudwatch_log_group.mpi_read_lambda_log_group.arn
+        Resource = "${aws_cloudwatch_log_group.mpi_read_lambda_log_group.arn}:*"
       }
     ]
   })
