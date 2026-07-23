@@ -23,29 +23,35 @@ def lambda_handler(event, context):
     
     resource_type = event.get("resourceType")
 
-    if resource_type == "Patient":
+    if resource_type == "Encounter":
         item = {
-            "patient_id": event["id"],
-            "resourceType": "Patient",
-            "name": event["name"],
-            "nationalId": event["identifier"][0]["value"],
-            "gender": event["gender"],
-            "birthDate": event["birthDate"],
-            "address": event["address"],
-            "generalPractitioner": event["generalPractitioner"][0]["display"],
-            "knownForeignIds": event.get("knownForeignIds", [])
+            "PK": f"PATIENT#{event['subject']['reference'].split('/')[1]}",
+            "SK": f"ENCOUNTER#{event['period']['start']}#{event['id']}",
+            "resourceType": "Encounter",
+            "status": event["status"],
+            "period": {
+                "start": event["period"]["start"],
+                "end": event["period"]["end"]
+            },
+            "serviceProvider": event["serviceProvider"]["display"],
+            "class": {
+                "system": event.get("class", {}).get("system"),
+                "code": event.get("class", {}).get("code"),
+                "display": event.get("class", {}).get("display")},
+            "type": event["type"][0]["text"],
+            "generalPractitioner": event.get("generalPractitioner")
         }
         # To prevent accidental overwrite
         try:
             response = table.put_item(
                 Item=item,
-                ConditionExpression="attribute_not_exists(patient_id)"
+                ConditionExpression="attribute_not_exists(SK)"
             )
         except ClientError as e:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return {
                     "statusCode": 409,
-                    "body": json.dumps({"error": "Patient already exists"})
+                    "body": json.dumps({"error": "Encounter already exists"})
                 }
             else:
                 raise

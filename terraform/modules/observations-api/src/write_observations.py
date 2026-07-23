@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 import boto3
 import os
@@ -23,29 +24,30 @@ def lambda_handler(event, context):
     
     resource_type = event.get("resourceType")
 
-    if resource_type == "Patient":
+    if resource_type == "Observation":
         item = {
-            "patient_id": event["id"],
-            "resourceType": "Patient",
-            "name": event["name"],
-            "nationalId": event["identifier"][0]["value"],
-            "gender": event["gender"],
-            "birthDate": event["birthDate"],
-            "address": event["address"],
-            "generalPractitioner": event["generalPractitioner"][0]["display"],
-            "knownForeignIds": event.get("knownForeignIds", [])
+            "PK": f"PATIENT#{event['subject']['reference'].split('/')[1]}",
+            "SK": f"OBSERVATION#{event['effectiveDateTime']}#{event['id']}",
+            "resourceType": "Observation",
+            "status": event["status"],
+            "category": event["category"][0]["coding"][0]["display"],
+            "code": event["code"]["coding"][0]["display"],
+            "encounter": event["encounter"]["reference"],
+            "effectiveDateTime": event["effectiveDateTime"],
+            "components": json.loads(json.dumps(event["component"]), parse_float=Decimal)
         }
+        
         # To prevent accidental overwrite
         try:
             response = table.put_item(
                 Item=item,
-                ConditionExpression="attribute_not_exists(patient_id)"
+                ConditionExpression="attribute_not_exists(SK)"
             )
         except ClientError as e:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return {
                     "statusCode": 409,
-                    "body": json.dumps({"error": "Patient already exists"})
+                    "body": json.dumps({"error": "Observation already exists"})
                 }
             else:
                 raise

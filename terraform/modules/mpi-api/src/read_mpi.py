@@ -15,7 +15,7 @@ def lambda_handler(event, context):
     if "clinicians" not in cognito_groups:
         return {
             "statusCode": 403,
-            "body": json.dumps({"error": "User is not authorized to perform this action"})
+            "body": json.dumps({"error": "User is not authorised to perform this action"})
         }
     
     national_id = (event.get('queryStringParameters') or {}).get('national_id')
