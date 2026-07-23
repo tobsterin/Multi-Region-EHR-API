@@ -40,13 +40,18 @@ flowchart TB
     J -- GET /mpi --> AG2["MPI API Gateway x3"]
     AG2 --> AUTH2["Cognito JWT Authorizer"]
     AUTH2 -- valid token (clinicians only) --> K["Search Lambda"]
-    AUTH2 -- no/invalid token --> X["401 Unauthorized"]
+    AUTH2 -- no/invalid token --> X
     K -- get salt --> L["Parameter Store"]
     L -- salt --> K
     K -- Query with Hash --> D
     D -- Match Found --> M{"Patient<br>Found?"}
     M -- Yes --> N["Inform Clinician<br>of Match"]
     M -- No --> O["No Match Found"]
+    J -- GET /patients/{patient_id}/encounters --> AG3["Clinical API Gateway x3"]
+    AG3 --> AUTH3["Cognito JWT Authorizer"]
+    AUTH3 -- valid token (clinicians only) --> CL["Encounter / Observation<br>Lambdas"]
+    AUTH3 -- no/invalid token --> X
+    CL -- Query PK + begins_with SK --> CV["Regional DynamoDB<br>Clinical Table"]
 
 
      A:::creation
@@ -61,21 +66,26 @@ flowchart TB
      M:::decision
      AUTH1:::auth
      AUTH2:::auth
+     AUTH3:::auth
+     CL:::lambda
+     CV:::database
     classDef creation fill:#f0fdf4,stroke:#4ade80
     classDef lambda fill:#eef2ff,stroke:#818cf8
     classDef database fill:#f0f9ff,stroke:#38bdf8
     classDef clinician fill:#fff7ed,stroke:#fb923c
     classDef decision fill:#fdf4ff,stroke:#e879f9
     classDef auth fill:#fff8bf,stroke:#4a0bf6
+    
 ```
 
-* **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB table for Patient resources.  
+* **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB table for Patient resources.
+* **Clinical Vaults:** Each country has a second DynamoDB table (`clinical`) storing Encounter and Observation resources under a shared key schema (`PK = PATIENT#<id>`, `SK = <TYPE>#<datetime>#<id>`), so one Query returns a patient's clinical history in chronological order.
 * **DynamoDB Global Table (MPI):** Stores the pseudonymised Master Patient Index (hashes + UUIDs). Read returns the UUID for E2E verification.
 * **Secure Linking:** Lambda functions hash national IDs using a salt stored in **AWS Systems Manager Parameter Store**.
-* **Edge & API Layer:** Regional REST APIs managed via **Amazon API Gateway** .
+* **Edge & API Layer:** Regional HTTP APIs managed via **Amazon API Gateway**.
 * **Compute (Lambdas):** 
     * **Search Service:** Python Lambda for ID hashing and MPI lookup.
-    * **CRUD Services:** Create/Read/Update Lambdas for Patient resources.
+    * **CRUD Services:** Create/Read/Update Lambdas for Patient, encounter, and observation resources.
 * **Auto-Registration (DynamoDB Streams):** When a new patient is created in a regional vault, the stream triggers a registrar Lambda. It hashes disclosed foreign national IDs and queries the MPI. On a match, it links the new record to the existing UUID; otherwise, it creates a new one. 
 * **Cross-Border Access:** No clinical data crosses borders; only hashes and UUIDs reach the global MPI.
 * Restrict API Gateway using **Amazon Cognito** (User Pools, JWT authorizer on every route, RBAC via cognito groups (clinicians, auditors): patient-data routes are clinicians-only, fail-closed; auditors deliberately get no record access (data minimisation), their surface arrives with the logging layer).
@@ -121,7 +131,6 @@ flowchart TB
     * Add regional **AWS KMS Customer Managed Keys (CMKs)** for encryption at rest.
 * **Data & Operations:**
     * Implement transient cross-border memory access (no data persistence).
-    * Expand Regional Vaults to include Encounter and Observation tables + corresponding CRUD Lambdas.
     * MPI read to return existence + region only.
     * **CI/CD Pipeline:** GitHub Actions for automated deployment.
     * **Audit:** Enforce CloudTrail API auditing with 14-day retention and log "Purpose of Use".
