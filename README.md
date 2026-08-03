@@ -40,17 +40,17 @@ flowchart TB
     J -- GET /mpi --> AG2["MPI API Gateway x3"]
     AG2 --> AUTH2["Cognito JWT Authorizer"]
     AUTH2 -- valid token (clinicians only) --> K["Search Lambda"]
-    AUTH2 -- no/invalid token --> X
+    AUTH2 -- no/invalid token --> X1["401 Unauthorized"]
     K -- get salt --> L["Parameter Store"]
     L -- salt --> K
     K -- Query with Hash --> D
     D -- Match Found --> M{"Patient<br>Found?"}
     M -- Yes --> N["Inform Clinician<br>of Match"]
     M -- No --> O["No Match Found"]
-    J -- GET /patients/{patient_id}/encounters --> AG3["Clinical API Gateway x3"]
+    J -- GET encounters/observations --> AG3["Clinical API Gateway x6"]
     AG3 --> AUTH3["Cognito JWT Authorizer"]
     AUTH3 -- valid token (clinicians only) --> CL["Encounter / Observation<br>Lambdas"]
-    AUTH3 -- no/invalid token --> X
+    AUTH3 -- no/invalid token --> X1["401 Unauthorized"]
     CL -- Query PK + begins_with SK --> CV["Regional DynamoDB<br>Clinical Table"]
 
 
