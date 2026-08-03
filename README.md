@@ -79,7 +79,7 @@ flowchart TB
 ```
 
 * **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB table for Patient resources.
-* **Clinical Vaults:** Each country has a second DynamoDB table (`clinical`) storing Encounter and Observation resources under a shared key schema (`PK = PATIENT#<id>`, `SK = <TYPE>#<datetime>#<id>`), so one Query returns a patient's clinical history in chronological order.
+* **Clinical Vaults:** Each country has a second DynamoDB table (`clinical`) storing Encounter and Observation resources under a shared key schema (`PK = PATIENT#<id>`, `SK = <TYPE>#<datetime>#<id>`), so one Query per resource type returns a patient's clinical history in chronological order within that type.
 * **DynamoDB Global Table (MPI):** Stores the pseudonymised Master Patient Index (hashes + UUIDs). Read returns the UUID for E2E verification.
 * **Secure Linking:** Lambda functions hash national IDs using a salt stored in **AWS Systems Manager Parameter Store**.
 * **Edge & API Layer:** Regional HTTP APIs managed via **Amazon API Gateway**.
