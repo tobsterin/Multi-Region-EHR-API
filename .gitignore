@@ -11,3 +11,4 @@ crash.log
 *.tfvars
 *.auto.tfvars
 dist/
+.venv/

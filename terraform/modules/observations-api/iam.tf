@@ -14,7 +14,7 @@ resource "aws_iam_role" "observations_read_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "observations_read_lambda_policy" {
@@ -62,7 +62,7 @@ resource "aws_iam_role" "observations_write_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "observations_write_lambda_policy" {
@@ -109,7 +109,7 @@ resource "aws_iam_role" "observations_update_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "observations_update_lambda_policy" {

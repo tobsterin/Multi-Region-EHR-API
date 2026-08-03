@@ -1,11 +1,6 @@
-variable "table_arn" {
-  description = "The ARN of the DynamoDB table."  
-  type = string
-}
-
 variable "dynamodbstream_arn" {
   description = "The ARN of the DynamoDB stream"
-  type = string
+  type        = string
 }
 
 variable "region_suffix" {

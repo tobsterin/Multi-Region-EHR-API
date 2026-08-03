@@ -1,4 +1,5 @@
 # Account
+data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 # Role + Policy
@@ -28,26 +29,19 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
         Action = [
           "dynamodb:PutItem"
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         Resource = [
-          "arn:aws:dynamodb:eu-west-2:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:eu-central-1:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:eu-west-3:${data.aws_caller_identity.current.account_id}:table/mpi_global_table"
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
         ]
       },
       {
         Action = [
           "dynamodb:Query"
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         Resource = [
-          "arn:aws:dynamodb:eu-west-2:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:eu-central-1:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:eu-west-3:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:eu-west-2:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*",
-          "arn:aws:dynamodb:eu-central-1:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*",
-          "arn:aws:dynamodb:eu-west-3:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*",
-
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*"
         ]
       },
       {
@@ -57,7 +51,7 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
           "dynamodb:DescribeStream",
           "dynamodb:ListStreams"
         ]
-        Effect = "Allow"
+        Effect   = "Allow"
         Resource = var.dynamodbstream_arn
       },
       {

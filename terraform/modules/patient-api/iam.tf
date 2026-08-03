@@ -14,7 +14,7 @@ resource "aws_iam_role" "patient_read_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "patient_read_lambda_policy" {
@@ -61,7 +61,7 @@ resource "aws_iam_role" "patient_write_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "patient_write_lambda_policy" {
@@ -108,7 +108,7 @@ resource "aws_iam_role" "patient_update_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "patient_update_lambda_policy" {

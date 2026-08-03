@@ -1,7 +1,7 @@
 resource "aws_apigatewayv2_api" "mpi-api" {
   name          = "mpi-api-${var.region_suffix}"
   protocol_type = "HTTP"
-  
+
 }
 
 resource "aws_apigatewayv2_stage" "mpi_api_stage" {
@@ -19,11 +19,11 @@ resource "aws_apigatewayv2_integration" "mpi_api_lambda_integration" {
 }
 
 resource "aws_apigatewayv2_route" "mpi_api_route" {
-  api_id    = aws_apigatewayv2_api.mpi-api.id
-  route_key = "GET /mpi"
+  api_id             = aws_apigatewayv2_api.mpi-api.id
+  route_key          = "GET /mpi"
   authorization_type = "JWT"
-  authorizer_id = aws_apigatewayv2_authorizer.mpi_api_cognito_authorizer.id
-  target    = "integrations/${aws_apigatewayv2_integration.mpi_api_lambda_integration.id}"
+  authorizer_id      = aws_apigatewayv2_authorizer.mpi_api_cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.mpi_api_lambda_integration.id}"
 }
 
 resource "aws_lambda_permission" "mpi_api_lambda_permission" {
@@ -37,9 +37,9 @@ resource "aws_lambda_permission" "mpi_api_lambda_permission" {
 
 # cognito Authoriser:
 resource "aws_apigatewayv2_authorizer" "mpi_api_cognito_authorizer" {
-  api_id = aws_apigatewayv2_api.mpi-api.id
-  name   = "mpi-api-cognito-authorizer"
-  authorizer_type = "JWT"
+  api_id           = aws_apigatewayv2_api.mpi-api.id
+  name             = "mpi-api-cognito-authorizer"
+  authorizer_type  = "JWT"
   identity_sources = ["$request.header.Authorization"]
   jwt_configuration {
     audience = [var.cognito_client_id]

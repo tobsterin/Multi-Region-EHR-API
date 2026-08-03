@@ -22,5 +22,5 @@ resource "aws_lambda_function" "observations_read_lambda" {
     aws_iam_role_policy.observations_read_lambda_policy,
     aws_cloudwatch_log_group.observations_read_lambda_log_group
   ]
-  
+
 }

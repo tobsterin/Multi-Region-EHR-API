@@ -14,7 +14,7 @@ resource "aws_iam_role" "encounters_read_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "encounters_read_lambda_policy" {
@@ -62,7 +62,7 @@ resource "aws_iam_role" "encounters_write_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "encounters_write_lambda_policy" {
@@ -109,7 +109,7 @@ resource "aws_iam_role" "encounters_update_lambda_role" {
       },
     ]
   })
-  
+
 }
 
 resource "aws_iam_role_policy" "encounters_update_lambda_policy" {

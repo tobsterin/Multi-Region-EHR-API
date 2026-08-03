@@ -1,4 +1,5 @@
 # Account
+data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 # read lambda role and policy:
@@ -29,7 +30,10 @@ resource "aws_iam_role_policy" "mpi_read_lambda_policy" {
           "dynamodb:Query"
         ]
         Effect   = "Allow"
-        Resource = [var.table_arn, "${var.table_arn}/index/*"]
+        Resource = [
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*"
+        ]
       },
       {
         Action = [

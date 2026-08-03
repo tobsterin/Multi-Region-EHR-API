@@ -1,11 +1,11 @@
 data "archive_file" "mpi_registrar_archive" {
-    type = "zip"
-    source_file = "${path.module}/src/mpi_registrar.py"
-    output_path = "${path.module}/dist/mpi_registrar.zip"  
+  type        = "zip"
+  source_file = "${path.module}/src/mpi_registrar.py"
+  output_path = "${path.module}/dist/mpi_registrar.zip"
 }
 
-data "aws_ssm_parameter" "salt"{
-    name = "/mpi/salt"
+data "aws_ssm_parameter" "salt" {
+  name = "/mpi/salt"
 }
 
 

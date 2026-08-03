@@ -22,5 +22,5 @@ resource "aws_lambda_function" "patient_write_lambda" {
     aws_iam_role_policy.patient_write_lambda_policy,
     aws_cloudwatch_log_group.patient_write_lambda_log_group
   ]
-  
+
 }

@@ -22,5 +22,5 @@ resource "aws_lambda_function" "patient_update_lambda" {
     aws_iam_role_policy.patient_update_lambda_policy,
     aws_cloudwatch_log_group.patient_update_lambda_log_group
   ]
-  
+
 }

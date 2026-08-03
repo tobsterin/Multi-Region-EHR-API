@@ -1,6 +1,6 @@
 {
   "resourceType": "Observation",
-  "id": "observation-uuid-789",
+  "id": "obs-uk-0001",
   "status": "final",
   "category": [
     {
@@ -16,26 +16,32 @@
   "code": {
     "coding": [
       {
-        "system": "http://snomed.info/sct",
-        "code": "75367002",
-        "display": "Blood pressure"
+        "system": "http://loinc.org",
+        "code": "85354-9",
+        "display": "Blood pressure panel with all children optional"
       }
     ]
   },
   "subject": {
-    "reference": "Patient/patient-uuid-123"
+    "reference": "Patient/pat-uk-200"
   },
   "encounter": {
-    "reference": "Encounter/encounter-uuid-456"
+    "reference": "Encounter/enc-uk-0001"
   },
-  "effectiveDateTime": "2025-11-20T14:05:00Z",
+  "effectiveDateTime": "2026-07-14T09:42:00Z",
   "component": [
     {
       "code": {
-        "text": "Systolic"
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "8480-6",
+            "display": "Systolic blood pressure"
+          }
+        ]
       },
       "valueQuantity": {
-        "value": 120,
+        "value": 138.0,
         "unit": "mmHg",
         "system": "http://unitsofmeasure.org",
         "code": "mm[Hg]"
@@ -43,10 +49,16 @@
     },
     {
       "code": {
-        "text": "Diastolic"
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "8462-4",
+            "display": "Diastolic blood pressure"
+          }
+        ]
       },
       "valueQuantity": {
-        "value": 80,
+        "value": 86.5,
         "unit": "mmHg",
         "system": "http://unitsofmeasure.org",
         "code": "mm[Hg]"

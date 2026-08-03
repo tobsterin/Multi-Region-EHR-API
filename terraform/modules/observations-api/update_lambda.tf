@@ -22,5 +22,5 @@ resource "aws_lambda_function" "observations_update_lambda" {
     aws_iam_role_policy.observations_update_lambda_policy,
     aws_cloudwatch_log_group.observations_update_lambda_log_group
   ]
-  
+
 }

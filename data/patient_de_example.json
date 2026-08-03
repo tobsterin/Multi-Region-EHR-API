@@ -1,0 +1,42 @@
+{
+  "resourceType": "Patient",
+  "id": "pat-de-200",
+  "identifier": [
+    {
+      "system": "https://fhir.de/sid/gkv/kvid-10",
+      "value": "DE-Z987654321"
+    }
+  ],
+  "name": [
+    {
+      "use": "official",
+      "family": "Whitfield",
+      "given": [
+        "Eleanor",
+        "Jane"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1979-04-18",
+  "address": [
+    {
+      "line": [
+        "Gneisenaustrasse 42"
+      ],
+      "city": "Berlin",
+      "postalCode": "10961",
+      "country": "DE"
+    }
+  ],
+  "generalPractitioner": [
+    {
+      "display": "Dr. K. Baumann, Praxis Kreuzberg"
+    }
+  ],
+  "knownForeignIds": [
+    {
+      "national_id": "UK-AB123456C"
+    }
+  ]
+}

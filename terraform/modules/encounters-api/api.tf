@@ -18,11 +18,11 @@ resource "aws_apigatewayv2_integration" "encounters_api_lambda_integration" {
 }
 
 resource "aws_apigatewayv2_route" "encounters_api_route" {
-  api_id    = aws_apigatewayv2_api.encounters_api.id
-  route_key = "GET /patients/{patient_id}/encounters"
+  api_id             = aws_apigatewayv2_api.encounters_api.id
+  route_key          = "GET /patients/{patient_id}/encounters"
   authorization_type = "JWT"
-  authorizer_id = aws_apigatewayv2_authorizer.encounters_api_cognito_authorizer.id
-  target    = "integrations/${aws_apigatewayv2_integration.encounters_api_lambda_integration.id}"
+  authorizer_id      = aws_apigatewayv2_authorizer.encounters_api_cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.encounters_api_lambda_integration.id}"
 }
 
 resource "aws_lambda_permission" "apigw_lambda_permission" {
@@ -42,11 +42,11 @@ resource "aws_apigatewayv2_integration" "encounters_write_api_lambda_integration
 }
 
 resource "aws_apigatewayv2_route" "encounters_write_api_route" {
-  api_id    = aws_apigatewayv2_api.encounters_api.id
-  route_key = "POST /encounters"
+  api_id             = aws_apigatewayv2_api.encounters_api.id
+  route_key          = "POST /encounters"
   authorization_type = "JWT"
-  authorizer_id = aws_apigatewayv2_authorizer.encounters_api_cognito_authorizer.id
-  target    = "integrations/${aws_apigatewayv2_integration.encounters_write_api_lambda_integration.id}"
+  authorizer_id      = aws_apigatewayv2_authorizer.encounters_api_cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.encounters_write_api_lambda_integration.id}"
 }
 
 resource "aws_lambda_permission" "apigw_write_lambda_permission" {
@@ -66,11 +66,11 @@ resource "aws_apigatewayv2_integration" "encounters_update_api_lambda_integratio
 }
 
 resource "aws_apigatewayv2_route" "encounters_update_api_route" {
-  api_id    = aws_apigatewayv2_api.encounters_api.id
-  route_key = "PATCH /encounters"
+  api_id             = aws_apigatewayv2_api.encounters_api.id
+  route_key          = "PATCH /encounters"
   authorization_type = "JWT"
-  authorizer_id = aws_apigatewayv2_authorizer.encounters_api_cognito_authorizer.id
-  target    = "integrations/${aws_apigatewayv2_integration.encounters_update_api_lambda_integration.id}"
+  authorizer_id      = aws_apigatewayv2_authorizer.encounters_api_cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.encounters_update_api_lambda_integration.id}"
 }
 
 resource "aws_lambda_permission" "apigw_update_lambda_permission" {
@@ -84,9 +84,9 @@ resource "aws_lambda_permission" "apigw_update_lambda_permission" {
 
 # cognito Authoriser:
 resource "aws_apigatewayv2_authorizer" "encounters_api_cognito_authorizer" {
-  api_id = aws_apigatewayv2_api.encounters_api.id
-  name   = "encounters-api-cognito-authorizer"
-  authorizer_type = "JWT"
+  api_id           = aws_apigatewayv2_api.encounters_api.id
+  name             = "encounters-api-cognito-authorizer"
+  authorizer_type  = "JWT"
   identity_sources = ["$request.header.Authorization"]
   jwt_configuration {
     audience = [var.cognito_client_id]

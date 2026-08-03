@@ -22,5 +22,5 @@ resource "aws_lambda_function" "encounters_update_lambda" {
     aws_iam_role_policy.encounters_update_lambda_policy,
     aws_cloudwatch_log_group.encounters_update_lambda_log_group
   ]
-  
+
 }

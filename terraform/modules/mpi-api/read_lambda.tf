@@ -27,5 +27,5 @@ resource "aws_lambda_function" "mpi_read_lambda" {
     aws_iam_role_policy.mpi_read_lambda_policy,
     aws_cloudwatch_log_group.mpi_read_lambda_log_group
   ]
-  
+
 }

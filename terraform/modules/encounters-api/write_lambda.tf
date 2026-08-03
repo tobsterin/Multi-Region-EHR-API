@@ -22,5 +22,5 @@ resource "aws_lambda_function" "encounters_write_lambda" {
     aws_iam_role_policy.encounters_write_lambda_policy,
     aws_cloudwatch_log_group.encounters_write_lambda_log_group
   ]
-  
+
 }

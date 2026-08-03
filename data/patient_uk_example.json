@@ -1,0 +1,33 @@
+{
+  "resourceType": "Patient",
+  "id": "pat-uk-200",
+  "identifier": [
+    {
+      "system": "https://fhir.nhs.uk/Id/nhs-number",
+      "value": "UK-AB123456C"
+    }
+  ],
+  "name": [
+    {
+      "use": "official",
+      "family": "Whitfield",
+      "given": ["Eleanor", "Jane"]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1979-04-18",
+  "address": [
+    {
+      "line": ["14 Larkfield Road"],
+      "city": "London",
+      "postalCode": "TW9 2PF",
+      "country": "GB"
+    }
+  ],
+  "generalPractitioner": [
+    {
+      "display": "Dr. A. Mensah, Richmond Green Surgery"
+    }
+  ],
+  "knownForeignIds": []
+}
