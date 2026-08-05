@@ -2,6 +2,10 @@
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
+data "aws_kms_key" "ssm_key" {
+  key_id = "alias/aws/ssm"
+}
+
 # Role + Policy
 resource "aws_iam_role" "mpi_registrar_lambda_role" {
   name = "mpi_registrar_lambda_role-${var.region_suffix}"
@@ -27,12 +31,19 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
     Statement = [
       {
         Action = [
-          "dynamodb:PutItem"
+          "ssm:GetParameter"
         ]
         Effect = "Allow"
         Resource = [
-          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/mpi/salt"
         ]
+      },
+      {
+        Action = [
+          "kms:Decrypt"
+        ]
+        Effect   = "Allow"
+        Resource = [data.aws_kms_key.ssm_key.arn]
       },
       {
         Action = [
@@ -53,6 +64,15 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
         ]
         Effect   = "Allow"
         Resource = var.dynamodbstream_arn
+      },
+      {
+        Action = [
+          "dynamodb:PutItem"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
+        ]
       },
       {
         Action = [

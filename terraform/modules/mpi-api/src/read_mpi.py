@@ -6,6 +6,8 @@ from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
+salt_param_name = os.environ['SALT_PARAM_NAME']
+SALT = boto3.client('ssm').get_parameter(Name=salt_param_name, WithDecryption=True)['Parameter']['Value']
 
 def lambda_handler(event, context):
     # check cognito group
@@ -26,8 +28,7 @@ def lambda_handler(event, context):
     if not national_id:
         return {"statusCode": 400, "body": json.dumps({"error": "Missing national_id parameter"})}
     
-    salt = os.environ['SALT']
-    hashed = hashlib.sha256((national_id+salt).encode()).hexdigest()
+    hashed = hashlib.sha256((national_id+SALT).encode()).hexdigest()
     response = table.query(
         IndexName='national_id_hash_index',
         KeyConditionExpression= Key('national_id_hash').eq(hashed)
@@ -35,4 +36,5 @@ def lambda_handler(event, context):
     items = response.get('Items', [])
     if not items:
         return {"statusCode": 404, "body": json.dumps({"error": "Patient not found"})}
-    return {"statusCode": 200, "body": json.dumps(items)}
+    matches = [{"region": i["region"], "patient_uuid": i["patient_uuid"]} for i in items]
+    return {"statusCode": 200, "body": json.dumps(matches)}

@@ -8,6 +8,12 @@ variable "region_suffix" {
   type        = string
 }
 
+variable "salt_param_name" {
+  description = "The name of the SSM parameter for the salt."
+  type        = string
+  default     = "/mpi/salt"
+}
+
 # Cognito Variables:
 variable "cognito_user_pool_id" {
   description = "The ID of the Cognito User Pool."

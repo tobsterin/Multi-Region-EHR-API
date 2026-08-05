@@ -23,9 +23,9 @@ def lambda_handler(event, context):
     
     if "body" in event:
         event = json.loads(event["body"])
-    print("Received event:", json.dumps(event))
     
     resource_type = event.get("resourceType")
+    print(f"Processing {resource_type}")
 
     if resource_type == "Encounter":
         item = {
@@ -65,7 +65,7 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": f"Unsupported resourceType: {resource_type}"})
         }
 
-    print("DynamoDB response:", json.dumps(response))
+    print(f"New encounter saved: {event['id']}")
 
     return {
         "statusCode": 200,

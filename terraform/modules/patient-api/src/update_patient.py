@@ -25,9 +25,9 @@ def lambda_handler(event, context):
     patient_id = event.get('pathParameters', {}).get('patient_id')
     if 'body' in event:
         event = json.loads(event['body'])
-    print("Received event:", json.dumps(event))
     
     resource_type = event.get("resourceType")
+    print(f"Processing {resource_type} update")
 
     if resource_type == "Patient":
             try:
@@ -59,7 +59,7 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": f"Unsupported resourceType: {resource_type}"})
         }
 
-    print("DynamoDB response:", json.dumps(response))
+    print(f"Patient updated: {patient_id}")
 
     return {
         "statusCode": 200,

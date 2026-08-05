@@ -14,6 +14,7 @@ module "mpi_api_de" {
   source               = "./modules/mpi-api"
   region_suffix        = "de"
   table_arn            = module.mpi_table.table_arn
+  salt_param_name      = "/mpi/salt"
   cognito_client_id    = module.cognito.cognito_user_pool_client_id
   cognito_user_pool_id = module.cognito.cognito_user_pool_id
   providers            = { aws = aws.de }
@@ -22,6 +23,7 @@ module "mpi_registrar_de" {
   source             = "./modules/mpi-registrar"
   dynamodbstream_arn = module.regional_vault_de.stream_arn
   region_suffix      = "de"
+  salt_param_name    = "/mpi/salt"
   providers          = { aws = aws.de }
 }
 
@@ -29,6 +31,7 @@ module "mpi_api_fr" {
   source               = "./modules/mpi-api"
   region_suffix        = "fr"
   table_arn            = module.mpi_table.table_arn
+  salt_param_name      = "/mpi/salt"
   cognito_client_id    = module.cognito.cognito_user_pool_client_id
   cognito_user_pool_id = module.cognito.cognito_user_pool_id
   providers            = { aws = aws.fr }
@@ -37,6 +40,7 @@ module "mpi_registrar_fr" {
   source             = "./modules/mpi-registrar"
   dynamodbstream_arn = module.regional_vault_fr.stream_arn
   region_suffix      = "fr"
+  salt_param_name    = "/mpi/salt"
   providers          = { aws = aws.fr }
 }
 
@@ -44,6 +48,7 @@ module "mpi_api_uk" {
   source               = "./modules/mpi-api"
   region_suffix        = "uk"
   table_arn            = module.mpi_table.table_arn
+  salt_param_name      = "/mpi/salt"
   cognito_client_id    = module.cognito.cognito_user_pool_client_id
   cognito_user_pool_id = module.cognito.cognito_user_pool_id
   providers            = { aws = aws.uk }
@@ -52,6 +57,7 @@ module "mpi_registrar_uk" {
   source             = "./modules/mpi-registrar"
   dynamodbstream_arn = module.regional_vault_uk.stream_arn
   region_suffix      = "uk"
+  salt_param_name    = "/mpi/salt"
   providers          = { aws = aws.uk }
 }
 

@@ -9,17 +9,19 @@ from boto3.dynamodb.types import TypeDeserializer
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
 deserializer = TypeDeserializer()
-SALT = os.environ['SALT']
+region = os.environ['REGION']
+salt_param_name = os.environ['SALT_PARAM_NAME']
+SALT = boto3.client('ssm').get_parameter(Name=salt_param_name, WithDecryption=True)['Parameter']['Value']
 
 
 def lambda_handler(event, context):
-    print("Received event:", json.dumps(event))
+    print(f"Processing {len(event.get('Records', []))} records")
 
     for record in event['Records']:
         if record['eventName'] != 'INSERT':
             continue
         new_image = record['dynamodb']['NewImage']
-        print("New patient:", json.dumps(new_image))
+        print(f"Processing new patient in {region}")
 
         national_id = deserializer.deserialize(new_image["nationalId"])
         foreign_ids = deserializer.deserialize(new_image["knownForeignIds"])
@@ -34,17 +36,19 @@ def lambda_handler(event, context):
             )
             if response['Items']:
                 patient_uuid = response['Items'][0]['patient_uuid']
+                print(f"Found existing patient UUID {patient_uuid}")
                 break
             
         if not patient_uuid:
             patient_uuid = str(uuid.uuid4())
+            print(f"Generated new patient UUID {patient_uuid}")
             
         hashed = hashlib.sha256((national_id + SALT).encode()).hexdigest()
 
         table.put_item(
             Item={
                 "patient_uuid": patient_uuid,
-                "region": os.environ['REGION'],
+                "region": region,
                 "national_id_hash": hashed
             }
         )
