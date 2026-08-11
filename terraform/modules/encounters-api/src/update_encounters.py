@@ -34,33 +34,54 @@ def lambda_handler(event, context):
 
 
     if resource_type == "Encounter":
-            try:
-                response = table.update_item(
-                    Key={"PK": f"PATIENT#{patient_id}", "SK": body.get("SK")},
-                    ExpressionAttributeNames={"#s": "status", "#e": "end", "#c": "class", "#t": "type"},
-                    UpdateExpression="SET #s = :stat, period.#e = :end_time, serviceProvider = :sp, #c = :class, #t = :type, generalPractitioner = :gp",
-                    ExpressionAttributeValues={
-                        ":stat": body.get("status"),
-                        ":end_time": body.get("end"),
-                        ":sp": body.get("serviceProvider"),
-                        ":class": body.get("class"),
-                        ":type": body.get("type"),
-                        ":gp": body.get("generalPractitioner")
-                    },
-                    ConditionExpression="attribute_exists(SK)"
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                    return {
-                        "statusCode": 404,
-                        "body": json.dumps({"error": "Encounter not found"})
-                    }
-                else:
-                    print("Error updating encounter:", e)
-                    return {
-                        "statusCode": 500,
-                        "body": json.dumps({"error": "Failed to update encounter"})
-                    }
+        fields = {
+            "status": body.get("status"),
+            "period.end": body.get("period", {}).get("end"),
+            "serviceProvider": body.get("serviceProvider"),
+            "class": body.get("class"),
+            "type": body.get("type"),
+            "generalPractitioner": body.get("generalPractitioner")
+        }
+        updates = {k: v for k, v in fields.items() if v is not None}
+        if not updates:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "No valid fields to update"})
+            }
+        names, values, parts = {}, {}, []
+        for i, (k, v) in enumerate(updates.items()):
+            if "." in k:
+                # Handle nested fields
+                parent, child = k.split(".", 1)
+                names[f"#f{i}"] = parent
+                names[f"#f{i}_child"] = child
+                values[f":v{i}"] = v
+                parts.append(f"#f{i}.#f{i}_child = :v{i}")
+            else:
+                names[f"#f{i}"]  = k
+                values[f":v{i}"] = v
+                parts.append(f"#f{i} = :v{i}")
+
+        try:
+            response = table.update_item(
+                Key={"PK": f"PATIENT#{patient_id}", "SK": body.get("SK")},
+                UpdateExpression="SET " + ", ".join(parts),
+                ExpressionAttributeNames=names,                        
+                ExpressionAttributeValues=values,
+                ConditionExpression="attribute_exists(SK)"
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                return {
+                    "statusCode": 404,
+                    "body": json.dumps({"error": "Encounter not found"})
+                }
+            else:
+                print("Error updating encounter:", e)
+                return {
+                    "statusCode": 500,
+                    "body": json.dumps({"error": "Failed to update encounter"})
+                }
                 
     else:
         return {

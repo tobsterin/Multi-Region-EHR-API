@@ -32,28 +32,34 @@ def lambda_handler(event, context):
         return {"statusCode": 400, "body": json.dumps({"error": "Missing patient_id or SK"})}
 
     if resource_type == "Observation":
-            try:
-                response = table.update_item(
-                    Key={"PK": f"PATIENT#{patient_id}", "SK": body.get("SK")},
-                    ExpressionAttributeNames={"#s": "status"},
-                    UpdateExpression="SET #s = :stat",
-                    ExpressionAttributeValues={
-                        ":stat": body.get("status")
-                    },
-                    ConditionExpression="attribute_exists(SK)"
-                )
-            except ClientError as e:
-                if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                    return {
-                        "statusCode": 404,
-                        "body": json.dumps({"error": "Observation not found"})
-                    }
-                else:
-                    print("Error updating observation:", e)
-                    return {
-                        "statusCode": 500,
-                        "body": json.dumps({"error": "Failed to update observation"})
-                    }
+        updates = {k: body.get(k) for k in ["status"] if body.get(k) is not None}
+        if not updates:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "No valid fields to update"})
+            }
+        try:
+            response = table.update_item(
+                Key={"PK": f"PATIENT#{patient_id}", "SK": body.get("SK")},
+                ExpressionAttributeNames={"#s": "status"},
+                UpdateExpression="SET #s = :stat",
+                ExpressionAttributeValues={
+                    ":stat": body.get("status")
+                },
+                ConditionExpression="attribute_exists(SK)"
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                return {
+                    "statusCode": 404,
+                    "body": json.dumps({"error": "Observation not found"})
+                }
+            else:
+                print("Error updating observation:", e)
+                return {
+                    "statusCode": 500,
+                    "body": json.dumps({"error": "Failed to update observation"})
+                }
                 
     else:
         return {
