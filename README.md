@@ -80,7 +80,7 @@ flowchart TB
 
 * **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB table for Patient resources.
 * **Clinical Vaults:** Each country has a second DynamoDB table (`clinical`) storing Encounter and Observation resources under a shared key schema (`PK = PATIENT#<id>`, `SK = <TYPE>#<datetime>#<id>`), so one Query per resource type returns a patient's clinical history in chronological order within that type.
-* **DynamoDB Global Table (MPI):** Stores the pseudonymised Master Patient Index (hashes + UUIDs). Read returns the UUID for E2E verification.
+* **DynamoDB Global Table (MPI):** Stores the pseudonymised Master Patient Index (hashes + UUIDs). Read returns existence, region and UUID only; the hash value is never disclosed.
 * **Secure Linking:** Lambda functions hash national IDs using a salt stored in **AWS Systems Manager Parameter Store**.
 * **Edge & API Layer:** Regional HTTP APIs managed via **Amazon API Gateway**.
 * **Compute (Lambdas):** 
@@ -92,7 +92,169 @@ flowchart TB
 
 ---
 
-## 3. Data Flow (Clinic Visit)
+## 3. Deployment & Walkthrough
+
+### 3.1 Prerequisites
+
+* An AWS account with credentials configured (aws configure)
+* Terraform >= 1.2
+* **The pseudonymisation salt:**
+```bash
+for r in eu-west-2 eu-central-1 eu-west-3; do
+  aws ssm put-parameter --name /mpi/salt --type SecureString \
+    --value '<your-salt>' --region "$r"
+done
+```
+
+The same salt must be used in every region: cross-border matching works by comparing hashes, so a hash written in one region must be reproducible in another.
+
+### 3.2 Deploy
+
+```bash
+cd terraform
+terraform init
+terraform apply
+```
+
+One apply builds the full stack across all three regions. The API invoke URLs are printed as Terraform outputs.
+
+### 3.3 Test users
+
+Create a clinician and an auditor in the Cognito user pool (pool and client IDs are in the Terraform outputs):
+
+```bash
+POOL=<cognito_user_pool_id output>
+CLIENT=<cognito_user_pool_client_id output>
+
+for u in testclinician testauditor; do
+  aws cognito-idp admin-create-user --user-pool-id "$POOL" \
+    --username "$u" --temporary-password '<a-temp-password>'
+done
+
+aws cognito-idp admin-set-user-password --user-pool-id "$POOL" \
+  --username testclinician --password '<clinician-password>' --permanent
+
+aws cognito-idp admin-set-user-password --user-pool-id "$POOL" \
+  --username testauditor --password '<auditor-password>' --permanent
+
+aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" \
+  --username testclinician --group-name clinicians
+
+aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" \
+  --username testauditor --group-name auditors
+```
+
+### 3.4 Shell setup
+
+```bash
+# UK (eu-west-2)
+PATIENT_UK=<patient_api_url_uk>
+ENC_UK=<encounters_api_url_uk>
+OBS_UK=<observations_api_url_uk>
+MPI_UK=<mpi_api_url_uk>
+# DE (eu-central-1) and FR (eu-west-3): same pattern from the outputs
+
+CLIN_PW='<clinician-password>'
+AUD_PW='<auditor-password>'
+
+region() {
+  local r=${1:-uk}
+  case "$r" in
+    uk) PATIENT=$PATIENT_UK; ENC=$ENC_UK; OBS=$OBS_UK; MPI=$MPI_UK ;;
+    de) PATIENT=$PATIENT_DE; ENC=$ENC_DE; OBS=$OBS_DE; MPI=$MPI_DE ;;
+    fr) PATIENT=$PATIENT_FR; ENC=$ENC_FR; OBS=$OBS_FR; MPI=$MPI_FR ;;
+    *)  echo "unknown region: $r"; return 1 ;;
+  esac
+  REGION=$r; echo "region: $r"
+}
+
+mint() {
+  CLIN=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH \
+    --client-id "$CLIENT" \
+    --auth-parameters USERNAME=testclinician,PASSWORD="$CLIN_PW" \
+    --query 'AuthenticationResult.IdToken' --output text)
+  AUD=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH \
+    --client-id "$CLIENT" \
+    --auth-parameters USERNAME=testauditor,PASSWORD="$AUD_PW" \
+    --query 'AuthenticationResult.IdToken' --output text)
+  echo "CLIN=${CLIN:0:12}...  AUD=${AUD:0:12}..."
+}
+
+api() {
+  local base=$1 method=$2 route=$3 token=$4; shift 4
+  curl -sS -i -X "$method" "${base%/}$route" \
+    -H "Authorization: Bearer $token" \
+    -H "Content-Type: application/json" "$@"
+}
+
+pat() { api "$PATIENT" "$@"; }
+enc() { api "$ENC"     "$@"; }
+obs() { api "$OBS"     "$@"; }
+mpi() { api "$MPI"     "$@"; }
+```
+
+Tokens expire after one hour; re-run mint when everything starts returning 401.
+
+### 3.5 Walkthrough: auth and RBAC
+
+```bash
+region uk && mint
+
+curl -i "${PATIENT%/}/patients/pat-uk-100"        # no token
+HTTP/2 401
+{"message":"Unauthorized"}
+
+pat GET /patients/pat-uk-100 "$CLIN"              # clinician
+HTTP/2 200
+{"resourceType": "Patient", "patient_id": "pat-uk-100", ...}
+
+pat GET /patients/pat-uk-100 "$AUD"               # auditor
+HTTP/2 403
+{"error": "User is not authorised to perform this action"}
+```
+
+Same endpoint, same valid token type, different group, different answer. Auditors are authenticated but deliberately hold no patient-data access (data minimisation); patient-data routes are clinicians-only and fail closed.
+
+### 3.6 Walkthrough: cross-border identity linking
+
+Register a patient in the UK, then register the same person in Germany disclosing their UK national ID (see data/patient_uk_example.json and data/patient_de_example.json — the DE record carries "knownForeignIds": [{"national_id": "<the UK ID>"}]):
+
+```bash
+region uk
+pat POST /patients "$CLIN" -d @data/patient_uk_example.json
+
+region de
+pat POST /patients "$CLIN" -d @data/patient_de_example.json
+```
+
+Each write triggers the registrar via DynamoDB Streams. Now query the MPI for either national ID, from either region:
+
+```bash
+region de
+mpi GET "/mpi?national_id=<UK national ID>" "$CLIN"
+HTTP/2 200
+[{"region": "uk", "patient_uuid": "7956c0ad-a8b6-44d6-add2-940f4f90c745"}]
+
+region uk
+mpi GET "/mpi?national_id=<DE national ID>" "$CLIN"
+HTTP/2 200
+[{"region": "de", "patient_uuid": "7956c0ad-a8b6-44d6-add2-940f4f90c745"}]
+```
+
+Same UUID from both regions: the registrar matched the disclosed foreign ID against the MPI and linked the two records to one identity. Only salted hashes and UUIDs ever crossed a border; the response returns existence, region and UUID — never the hash or any identifier.
+
+### 3.7 Clinical records
+
+```bash
+enc GET /patients/pat-uk-100/encounters   "$CLIN"
+obs GET /patients/pat-uk-100/observations "$CLIN"
+```
+
+Each returns the patient's records of that type in chronological order. Updates are PATCH requests that quote the full sort key back and change only the fields supplied in the body.
+
+---
+
+## 4. Data Flow (Clinic Visit)
 
 1.  **Patient Identification:** Patient arrives and informs the clinician of records in another country.
 2.  **Search:** Clinician enters the foreign National Health ID.
@@ -107,7 +269,7 @@ flowchart TB
 
 ---
 
-## 4. Development, Operations & Threat Model
+## 5. Development, Operations & Threat Model
 
 * **Infrastructure as Code:** Terraform manages all resources.
 * **Monitoring:** CloudWatch Logs.
@@ -121,7 +283,7 @@ flowchart TB
 
 ---
 
-## 5. Roadmap & Future Work
+## 6. Roadmap & Future Work
 
 ### Phase 1: Prototype Completion
 * **Security & Network:** 
@@ -131,8 +293,9 @@ flowchart TB
     * Add regional **AWS KMS Customer Managed Keys (CMKs)** for encryption at rest.
 * **Data & Operations:**
     * Implement transient cross-border memory access (no data persistence).
-    * MPI read to return existence + region only.
     * **CI/CD Pipeline:** GitHub Actions for automated deployment.
+    * **Paginate clinical reads:** clinical reads currently return only the first 1 MB; handle LastEvaluatedKey to page through full histories.
+    * **Extract the shared auth check into a Lambda layer:** Group check is duplicated across 10 handlers; to be extracted to a shared layer.
     * **Audit:** Enforce CloudTrail API auditing with 14-day retention and log "Purpose of Use".
     * **Frontend:** Build clinician-facing UI hosted on S3 + CloudFront.
 
@@ -142,6 +305,8 @@ flowchart TB
     * **EU (GDPR):** Data residency and automated workflows for the "Right to Erasure" (Art. 17).
     * Immutable auditing via CloudTrail + S3 Object Lock (7–10 year retention).
 * **Advanced Architecture:**
+    * **Historical records integration for the MPI:** Bulk migration mechanism for onboarding historical record into the system including handling the global-table replication race, which can otherwise mint duplicate UUIDs for one person during parallel regional imports.
+    * **Handle missing parent maps in nested updates:** SET period.end fails if a record has no period map.
     * Multi-Account Strategy (AWS Organizations) separating Security, Workloads, and Research OUs.
     * Migrate salt to **AWS Secrets Manager** with automated rotation.
     * Application hardening: SQS Dead Letter Queues (DLQs), Provisioned Concurrency, and rate limiting.
@@ -153,5 +318,5 @@ flowchart TB
 
 ---
 
-## 6. License
+## 7. License
 MIT
