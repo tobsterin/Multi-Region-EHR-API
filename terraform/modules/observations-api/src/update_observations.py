@@ -1,6 +1,6 @@
 import json
-import boto3
 import os
+import boto3
 from botocore.exceptions import ClientError
 
 
@@ -39,7 +39,7 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": "No valid fields to update"})
             }
         try:
-            response = table.update_item(
+            table.update_item(
                 Key={"PK": f"PATIENT#{patient_id}", "SK": body.get("SK")},
                 ExpressionAttributeNames={"#s": "status"},
                 UpdateExpression="SET #s = :stat",

@@ -1,6 +1,6 @@
 import json
-import boto3
 import os
+import boto3
 from botocore.exceptions import ClientError
 
 
@@ -44,7 +44,7 @@ def lambda_handler(event, context):
             parts.append(f"#f{i} = :v{i}")
 
         try:
-            response = table.update_item(
+            table.update_item(
                 Key={"patient_id": patient_id},
                 UpdateExpression="SET " + ", ".join(parts),
                 ExpressionAttributeNames=names,

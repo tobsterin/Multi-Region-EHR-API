@@ -1,9 +1,8 @@
-import json
-import boto3
-import os
 import hashlib
-from boto3.dynamodb.conditions import Key
+import os
 import uuid
+import boto3
+from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import TypeDeserializer
 
 dynamodb = boto3.resource('dynamodb')

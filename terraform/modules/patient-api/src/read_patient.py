@@ -1,6 +1,6 @@
 import json
-import boto3
 import os
+import boto3
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])

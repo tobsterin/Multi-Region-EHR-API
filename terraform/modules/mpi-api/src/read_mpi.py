@@ -1,7 +1,7 @@
+import hashlib
 import json
 import os
 import boto3
-import hashlib
 from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource('dynamodb')

@@ -1,7 +1,7 @@
-from decimal import Decimal
 import json
-import boto3
 import os
+from decimal import Decimal
+import boto3
 from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource("dynamodb")
@@ -43,7 +43,7 @@ def lambda_handler(event, context):
         
         # To prevent accidental overwrite
         try:
-            response = table.put_item(
+            table.put_item(
                 Item=item,
                 ConditionExpression="attribute_not_exists(SK)"
             )
