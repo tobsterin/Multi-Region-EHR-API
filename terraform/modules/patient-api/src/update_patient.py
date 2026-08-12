@@ -4,7 +4,6 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
-
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
 
