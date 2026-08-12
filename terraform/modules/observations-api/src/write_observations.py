@@ -23,13 +23,23 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "User is not authorised to perform this action"})
         }
     
+
     if "body" in event:
-        event = json.loads(event["body"])
+        try:
+            event = json.loads(event['body']or'{}')
+        except json.JSONDecodeError:
+            return {"statusCode": 400, "body": json.dumps({"error": "Request body is not valid JSON"})}
     
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type}")
 
     if resource_type == "Observation":
+        required = ["id", "status", "category", "code", "subject", "encounter", "effectiveDateTime", "component"]
+        missing = [f for f in required if not event.get(f)]
+        if missing:
+            return {"statusCode": 400,
+            "body": json.dumps({"error": f"Missing required fields: {', '.join(missing)}"})}
+        
         item = {
             "PK": f"PATIENT#{event['subject']['reference'].split('/')[1]}",
             "SK": f"OBSERVATION#{event['effectiveDateTime']}#{event['id']}",

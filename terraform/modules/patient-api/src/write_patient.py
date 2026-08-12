@@ -23,12 +23,20 @@ def lambda_handler(event, context):
         }
     
     if "body" in event:
-        event = json.loads(event["body"])
+        try:
+            event = json.loads(event['body'] or '{}')
+        except json.JSONDecodeError:
+            return {"statusCode": 400, "body": json.dumps({"error": "Request body is not valid JSON"})}
 
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type}")
 
     if resource_type == "Patient":
+        required = ["id", "name", "identifier", "gender", "birthDate", "address", "generalPractitioner"]
+        missing = [f for f in required if not event.get(f)]
+        if missing:
+            return {"statusCode": 400,
+            "body": json.dumps({"error": f"Missing required fields: {', '.join(missing)}"})}
         item = {
             "patient_id": event["id"],
             "resourceType": "Patient",

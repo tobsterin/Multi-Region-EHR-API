@@ -22,25 +22,29 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "User is not authorised to perform this action"})
         }
     
-    body = json.loads(event.get("body") or "{}")
+    if "body" in event:
+        try:
+            event = json.loads(event['body']or'{}')
+        except json.JSONDecodeError:
+            return {"statusCode": 400, "body": json.dumps({"error": "Request body is not valid JSON"})}
 
-    patient_id = body.get("patient_id")
-    resource_type = body.get("resourceType")
+    patient_id = event.get("patient_id")
+    resource_type = event.get("resourceType")
     print(f"Processing {resource_type} update")
 
 
-    if not patient_id or not body.get("SK"):
+    if not patient_id or not event.get("SK"):
         return {"statusCode": 400, "body": json.dumps({"error": "Missing patient_id or SK"})}
 
 
     if resource_type == "Encounter":
         fields = {
-            "status": body.get("status"),
-            "period.end": body.get("period", {}).get("end"),
-            "serviceProvider": body.get("serviceProvider"),
-            "class": body.get("class"),
-            "type": body.get("type"),
-            "generalPractitioner": body.get("generalPractitioner")
+            "status": event.get("status"),
+            "period.end": event.get("period", {}).get("end"),
+            "serviceProvider": event.get("serviceProvider"),
+            "class": event.get("class"),
+            "type": event.get("type"),
+            "generalPractitioner": event.get("generalPractitioner")
         }
         updates = {k: v for k, v in fields.items() if v is not None}
         if not updates:
@@ -64,7 +68,7 @@ def lambda_handler(event, context):
 
         try:
             table.update_item(
-                Key={"PK": f"PATIENT#{patient_id}", "SK": body.get("SK")},
+                Key={"PK": f"PATIENT#{patient_id}", "SK": event.get("SK")},
                 UpdateExpression="SET " + ", ".join(parts),
                 ExpressionAttributeNames=names,                        
                 ExpressionAttributeValues=values,
@@ -93,5 +97,5 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({"message": f"{resource_type} updated", "id": body.get("SK")})
+        "body": json.dumps({"message": f"{resource_type} updated", "id": event.get("SK")})
     }

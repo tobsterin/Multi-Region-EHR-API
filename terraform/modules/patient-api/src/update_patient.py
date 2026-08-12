@@ -23,9 +23,13 @@ def lambda_handler(event, context):
         }
     
     patient_id = event.get('pathParameters', {}).get('patient_id')
-    if 'body' in event:
-        event = json.loads(event['body'])
-    
+
+    if "body" in event:
+        try:
+            event = json.loads(event['body']or'{}')
+        except json.JSONDecodeError:
+            return {"statusCode": 400, "body": json.dumps({"error": "Request body is not valid JSON"})}
+
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type} update")
 
