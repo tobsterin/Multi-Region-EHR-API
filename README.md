@@ -200,15 +200,17 @@ Tokens expire after one hour; re-run mint when everything starts returning 401.
 ```bash
 region uk && mint
 
-curl -i "${PATIENT%/}/patients/pat-uk-100"        # no token
+pat POST /patients "$CLIN" -d @data/patient_uk_example.json   # a record to read
+
+curl -i "${PATIENT%/}/patients/pat-uk-200"        # no token
 HTTP/2 401
 {"message":"Unauthorized"}
 
-pat GET /patients/pat-uk-100 "$CLIN"              # clinician
+pat GET /patients/pat-uk-200 "$CLIN"              # clinician
 HTTP/2 200
-{"resourceType": "Patient", "patient_id": "pat-uk-100", ...}
+{"resourceType": "Patient", "patient_id": "pat-uk-200", ...}
 
-pat GET /patients/pat-uk-100 "$AUD"               # auditor
+pat GET /patients/pat-uk-200 "$AUD"               # auditor
 HTTP/2 403
 {"error": "User is not authorised to perform this action"}
 ```
@@ -217,12 +219,9 @@ Same endpoint, same valid token type, different group, different answer. Auditor
 
 ### 3.6 Walkthrough: cross-border identity linking
 
-Register a patient in the UK, then register the same person in Germany disclosing their UK national ID (see data/patient_uk_example.json and data/patient_de_example.json — the DE record carries "knownForeignIds": [{"national_id": "<the UK ID>"}]):
+The UK record was registered in 3.5. Now register the same person in Germany, disclosing their UK national ID (see data/patient_uk_example.json and data/patient_de_example.json — the DE record carries "knownForeignIds": [{"national_id": "<the UK ID>"}]):
 
 ```bash
-region uk
-pat POST /patients "$CLIN" -d @data/patient_uk_example.json
-
 region de
 pat POST /patients "$CLIN" -d @data/patient_de_example.json
 ```
@@ -243,11 +242,13 @@ HTTP/2 200
 
 Same UUID from both regions: the registrar matched the disclosed foreign ID against the MPI and linked the two records to one identity. Only salted hashes and UUIDs ever crossed a border; the response returns existence, region and UUID — never the hash or any identifier.
 
+Registration order matters. Linking is one-directional: it is driven by what the *incoming* record discloses. The DE record names the UK ID, so registering UK first and DE second resolves to one identity. Registered the other way round, the DE write finds nothing to match and the UK write discloses nothing, so the same person ends up with two unlinked UUIDs — silently, with no error. Reciprocal disclosure and a back-fill pass for records registered out of order are future work.
+
 ### 3.7 Clinical records
 
 ```bash
-enc GET /patients/pat-uk-100/encounters   "$CLIN"
-obs GET /patients/pat-uk-100/observations "$CLIN"
+enc GET /patients/pat-uk-200/encounters   "$CLIN"
+obs GET /patients/pat-uk-200/observations "$CLIN"
 ```
 
 Each returns the patient's records of that type in chronological order. Updates are PATCH requests that quote the full sort key back and change only the fields supplied in the body.
@@ -273,6 +274,7 @@ Each returns the patient's records of that type in chronological order. Updates 
 
 * **Infrastructure as Code:** Terraform manages all resources.
 * **Monitoring:** CloudWatch Logs.
+* **Continuous Validation:** GitHub Actions runs `terraform fmt`, `terraform validate` and `ruff` on every push; no AWS credentials required.
 * **Testing:** Manual end-to-end smoke tests across 3 regions.
 * **Policy Enforcement:** Deny-by-default IAM policies.
 
@@ -293,7 +295,8 @@ Each returns the patient's records of that type in chronological order. Updates 
     * Add regional **AWS KMS Customer Managed Keys (CMKs)** for encryption at rest.
 * **Data & Operations:**
     * Implement transient cross-border memory access (no data persistence).
-    * **CI/CD Pipeline:** GitHub Actions for automated deployment.
+    * **CI/CD Pipeline:** the validation workflow is in place (fmt, validate, lint); automated deployment on merge is still to come.
+    * **Reciprocal MPI linking:** linking is driven by what an incoming record discloses, so registration order decides whether two records resolve to one identity; add a back-fill pass so a later disclosure links records registered earlier.
     * **Paginate clinical reads:** clinical reads currently return only the first 1 MB; handle LastEvaluatedKey to page through full histories.
     * **Extract the shared auth check into a Lambda layer:** Group check is duplicated across 10 handlers; to be extracted to a shared layer.
     * **Audit:** Enforce CloudTrail API auditing with 14-day retention and log "Purpose of Use".
