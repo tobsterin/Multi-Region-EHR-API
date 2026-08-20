@@ -13,3 +13,20 @@ variable "salt_param_name" {
   type        = string
   default     = "/mpi/salt"
 }
+
+variable "mapping_table_name" {
+  description = "The name of the DynamoDB mapping table."
+  type        = string
+}
+
+variable "mapping_table_arn" {
+  description = "The ARN of the MPI table."
+  type        = string
+}
+
+
+# Lambda Layer Variable:
+variable "lambda_layer_arn" {
+  description = "The ARN of the Lambda Layer."
+  type        = string
+}

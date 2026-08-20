@@ -23,3 +23,9 @@ variable "cognito_client_id" {
   description = "The ID of the Cognito User Pool Client."
   type        = string
 }
+
+# Lambda Layer Variable:
+variable "lambda_layer_arn" {
+  description = "The ARN of the Lambda Layer."
+  type        = string
+}

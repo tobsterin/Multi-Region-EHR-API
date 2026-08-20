@@ -1,10 +1,10 @@
-import hashlib
 import os
 import uuid
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import TypeDeserializer
+from ehr_helpers import salted_hash
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
 
         for foreign_id in foreign_ids:
             foreign_ni = foreign_id["national_id"]
-            hashed_foreign = hashlib.sha256((foreign_ni + SALT).encode()).hexdigest()
+            hashed_foreign = salted_hash(foreign_ni, SALT)
             response = table.query(
                 IndexName='national_id_hash_index',
                 KeyConditionExpression=Key('national_id_hash').eq(hashed_foreign)
@@ -43,7 +43,7 @@ def lambda_handler(event, context):
             patient_uuid = str(uuid.uuid4())
             print(f"Generated new patient UUID {patient_uuid}")
             
-        hashed = hashlib.sha256((national_id + SALT).encode()).hexdigest()
+        hashed = salted_hash(national_id, SALT)
 
         table.put_item(
             Item={

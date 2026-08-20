@@ -3,19 +3,14 @@ import os
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from ehr_helpers import parse_groups
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
 
 def lambda_handler(event, context):
     # check cognito group
-    auth = event.get("requestContext", {}).get("authorizer", {})
-    claims = auth.get("jwt", {}).get("claims") or auth.get("claims", {})
-    raw_groups = claims.get("cognito:groups", "")
-    if isinstance(raw_groups, str):
-        cognito_groups = raw_groups.strip("[]").split()
-    else:
-        cognito_groups = raw_groups
+    cognito_groups = parse_groups(event)
     if "clinicians" not in cognito_groups:
         return {
             "statusCode": 403,

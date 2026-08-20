@@ -29,6 +29,7 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      #SSM Parameter Store and KMS Key Access
       {
         Action = [
           "ssm:GetParameter"
@@ -45,6 +46,7 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
         Effect   = "Allow"
         Resource = [data.aws_kms_key.ssm_key.arn]
       },
+      #DynamoDB Patient Stream
       {
         Action = [
           "dynamodb:Query"
@@ -65,6 +67,7 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
         Effect   = "Allow"
         Resource = var.dynamodbstream_arn
       },
+      #MPI Table Wtrite
       {
         Action = [
           "dynamodb:PutItem"
@@ -74,6 +77,17 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
           "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
         ]
       },
+      # Regional Mapping Table Write
+      {
+        Action = [
+          "dynamodb:PutItem"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/${var.mapping_table_name}"
+        ]
+      },
+      #CloudWatch Logs
       {
         Action = [
           "logs:CreateLogGroup",

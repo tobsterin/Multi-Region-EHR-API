@@ -7,6 +7,7 @@ data "archive_file" "observations_update_lambda_zip" {
 resource "aws_lambda_function" "observations_update_lambda" {
   function_name    = "observations-update-lambda-${var.region_suffix}"
   role             = aws_iam_role.observations_update_lambda_role.arn
+  layers           = [var.lambda_layer_arn]
   handler          = "update_observations.lambda_handler"
   runtime          = "python3.12"
   filename         = data.archive_file.observations_update_lambda_zip.output_path

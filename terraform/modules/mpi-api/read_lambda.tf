@@ -7,6 +7,7 @@ data "archive_file" "mpi_read_lambda_zip" {
 resource "aws_lambda_function" "mpi_read_lambda" {
   function_name    = "mpi-read-lambda-${var.region_suffix}"
   role             = aws_iam_role.mpi_read_lambda_role.arn
+  layers           = [var.lambda_layer_arn]
   handler          = "read_mpi.lambda_handler"
   runtime          = "python3.12"
   filename         = data.archive_file.mpi_read_lambda_zip.output_path

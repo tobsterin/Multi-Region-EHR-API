@@ -7,6 +7,7 @@ data "archive_file" "patient_write_lambda_zip" {
 resource "aws_lambda_function" "patient_write_lambda" {
   function_name    = "patient-write-lambda-${var.region_suffix}"
   role             = aws_iam_role.patient_write_lambda_role.arn
+  layers           = [var.lambda_layer_arn]
   handler          = "write_patient.lambda_handler"
   runtime          = "python3.12"
   filename         = data.archive_file.patient_write_lambda_zip.output_path

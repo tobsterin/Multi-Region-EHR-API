@@ -7,6 +7,7 @@ data "archive_file" "mpi_registrar_archive" {
 resource "aws_lambda_function" "mpi_registrar_lambda" {
   function_name    = "mpi-registrar-lambda-${var.region_suffix}"
   role             = aws_iam_role.mpi_registrar_lambda_role.arn
+  layers           = [var.lambda_layer_arn]
   handler          = "mpi_registrar.lambda_handler"
   runtime          = "python3.12"
   filename         = data.archive_file.mpi_registrar_archive.output_path
@@ -14,15 +15,17 @@ resource "aws_lambda_function" "mpi_registrar_lambda" {
 
   environment {
     variables = {
-      TABLE_NAME      = "mpi_global_table"
-      REGION          = var.region_suffix
-      SALT_PARAM_NAME = var.salt_param_name
+      TABLE_NAME         = "mpi_global_table"
+      MAPPING_TABLE_NAME = var.mapping_table_name
+      REGION             = var.region_suffix
+      SALT_PARAM_NAME    = var.salt_param_name
     }
   }
 
   depends_on = [
     aws_iam_role_policy.mpi_registrar_lambda_policy,
-    aws_cloudwatch_log_group.mpi_registrar_lambda_log_group
+    aws_cloudwatch_log_group.mpi_registrar_lambda_log_group,
+    aws_cloudwatch_log_group.mapping_table_lambda_log_group
   ]
 }
 
