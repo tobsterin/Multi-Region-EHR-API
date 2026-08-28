@@ -11,5 +11,6 @@ def parse_groups(event):
         cognito_groups = raw_groups
     return cognito_groups
 
+
 def salted_hash(value, salt):
     return hashlib.sha256((value + salt).encode()).hexdigest()

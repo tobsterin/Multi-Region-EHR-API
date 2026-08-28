@@ -5,8 +5,9 @@ import boto3
 from botocore.exceptions import ClientError
 from ehr_helpers import parse_groups
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['TABLE_NAME'])
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table(os.environ["TABLE_NAME"])
+
 
 def lambda_handler(event, context):
     # check cognito group
@@ -14,31 +15,40 @@ def lambda_handler(event, context):
     if "clinicians" not in cognito_groups:
         return {
             "statusCode": 403,
-            "body": json.dumps({"error": "User is not authorised to perform this action"})
+            "body": json.dumps(
+                {"error": "User is not authorised to perform this action"}
+            ),
         }
-    
-    patient_id = event.get('pathParameters', {}).get('patient_id')
+
+    patient_id = event.get("pathParameters", {}).get("patient_id")
 
     if "body" in event:
         try:
-            event = json.loads(event['body']or'{}')
+            event = json.loads(event["body"] or "{}")
         except json.JSONDecodeError:
-            return {"statusCode": 400, "body": json.dumps({"error": "Request body is not valid JSON"})}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Request body is not valid JSON"}),
+            }
 
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type} update")
 
     if resource_type == "Patient":
-        updates = {k: event.get(k) for k in ["address", "generalPractitioner"] if event.get(k) is not None}
+        updates = {
+            k: event.get(k)
+            for k in ["address", "generalPractitioner"]
+            if event.get(k) is not None
+        }
         if not updates:
             return {
                 "statusCode": 400,
-                "body": json.dumps({"error": "No valid fields to update"})
+                "body": json.dumps({"error": "No valid fields to update"}),
             }
-        
+
         names, values, parts = {}, {}, []
         for i, (k, v) in enumerate(updates.items()):
-            names[f"#f{i}"]  = k
+            names[f"#f{i}"] = k
             values[f":v{i}"] = v
             parts.append(f"#f{i} = :v{i}")
 
@@ -48,29 +58,29 @@ def lambda_handler(event, context):
                 UpdateExpression="SET " + ", ".join(parts),
                 ExpressionAttributeNames=names,
                 ExpressionAttributeValues=values,
-                ConditionExpression="attribute_exists(patient_id)"
+                ConditionExpression="attribute_exists(patient_id)",
             )
         except ClientError as e:
-            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return {
                     "statusCode": 404,
-                    "body": json.dumps({"error": "Patient not found"})
+                    "body": json.dumps({"error": "Patient not found"}),
                 }
             print("Error updating patient:", e)
             return {
                 "statusCode": 500,
-                "body": json.dumps({"error": "Failed to update patient"})
+                "body": json.dumps({"error": "Failed to update patient"}),
             }
-                
+
     else:
         return {
             "statusCode": 400,
-            "body": json.dumps({"error": f"Unsupported resourceType: {resource_type}"})
+            "body": json.dumps({"error": f"Unsupported resourceType: {resource_type}"}),
         }
 
     print(f"Patient updated: {patient_id}")
 
     return {
         "statusCode": 200,
-        "body": json.dumps({"message": f"{resource_type} updated", "id": patient_id})
+        "body": json.dumps({"message": f"{resource_type} updated", "id": patient_id}),
     }
