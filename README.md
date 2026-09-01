@@ -23,10 +23,6 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 
 ```mermaid
 
----
-config:
-  layout: elk
----
 flowchart TB
     A["New Patient Entry"] -->|"POST /patients"| AG1["Regional API Gateway x3"]
     AG1 --> AUTH1["Cognito JWT Authorizer"]
