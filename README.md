@@ -22,10 +22,6 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 *Prototype note: table count and record schemas are deliberately simplified; the focus is the residency and linking architecture, not clinical data modelling.*
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TB
     A["New Patient Entry"] -- POST /patients --> AG1["Regional API Gateway x3"]
     AG1 --> AUTH1["Cognito JWT Authorizer"]
