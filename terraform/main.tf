@@ -4,7 +4,8 @@ module "cognito" {
   providers = { aws = aws.uk }
 }
 
-# Global mapping table for patient UUIDs to regional patient IDs:
+# Regional mapping tables: patient UUID -> that region's own patient ID.
+# One per region, deliberately not global: the local patient ID never leaves its region.
 module "mapping_table_de" {
   source             = "./modules/mapping-table"
   providers          = { aws = aws.de }

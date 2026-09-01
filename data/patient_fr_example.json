@@ -1,0 +1,42 @@
+{
+  "resourceType": "Patient",
+  "id": "pat-fr-200",
+  "identifier": [
+    {
+      "system": "urn:oid:1.2.250.1.213.1.4.8",
+      "value": "FR-2790475116334"
+    }
+  ],
+  "name": [
+    {
+      "use": "official",
+      "family": "Whitfield",
+      "given": [
+        "Eleanor",
+        "Jane"
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1979-04-18",
+  "address": [
+    {
+      "line": [
+        "9 Rue de Belleville"
+      ],
+      "city": "Paris",
+      "postalCode": "75019",
+      "country": "FR"
+    }
+  ],
+  "generalPractitioner": [
+    {
+      "display": "Dr. C. Lemaitre, Cabinet Belleville"
+    }
+  ],
+  "knownForeignIds": [
+    {
+      "national_id": "DE-Z987654321"
+    }
+  ]
+}

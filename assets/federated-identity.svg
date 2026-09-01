@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="520" viewBox="0 0 1200 520"
+     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     role="img" aria-label="Three patient records for the same person, in the UK, Germany and France, resolving to one pseudonymised identity in a global master patient index. Each new region matches the row the previous one wrote, so France links to Britain transitively through Germany. Clinical records never leave their own region.">
+
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#1A2740" stroke-width="1" opacity=".5"/>
+    </pattern>
+
+    <g id="lock">
+      <path d="M2 4V2.6a3 3 0 0 1 6 0V4" fill="none" stroke="#5C6E8C" stroke-width="1.5"/>
+      <rect x="0" y="4" width="10" height="7.5" rx="1.6" fill="#5C6E8C"/>
+    </g>
+  </defs>
+
+  <!-- ground -->
+  <rect width="1200" height="520" rx="16" fill="#0B1220"/>
+  <rect width="1200" height="520" rx="16" fill="url(#grid)"/>
+  <rect x="1" y="1" width="1198" height="518" rx="15" fill="none" stroke="#22314F" stroke-width="2"/>
+
+  <!-- masthead -->
+  <rect x="44" y="30" width="4" height="15" fill="#2DD4BF"/>
+  <text x="58" y="42" fill="#E7EEF9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="3.5">FEDERATED PATIENT IDENTITY</text>
+  <text x="1156" y="42" text-anchor="end" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">3 regions · FHIR R4 · GDPR / NHS DSPT</text>
+  <path d="M44 60H1156" stroke="#1B2942" stroke-width="1.5"/>
+
+  <!-- ============ regional vaults ============ -->
+
+  <!-- UK -->
+  <g>
+    <rect x="44" y="80" width="354" height="160" rx="10" fill="#111C31" stroke="#22314F" stroke-width="1.5"/>
+    <text x="62" y="106" fill="#E7EEF9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">UK</text>
+    <text x="380" y="106" text-anchor="end" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">eu-west-2</text>
+    <path d="M62 118H380" stroke="#1B2942"/>
+    <text x="62" y="140" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">PATIENTS TABLE</text>
+    <text x="62" y="200" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">CLINICAL TABLE</text>
+    <use xlink:href="#lock" href="#lock" x="62" y="209"/>
+    <text x="80" y="220" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">stays in eu-west-2</text>
+
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.02;.05;.94;1" dur="20s" repeatCount="indefinite"/>
+      <text x="62" y="161" fill="#E7EEF9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">UK-AB123456C</text>
+      <text x="62" y="179" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10">no foreign ids disclosed</text>
+    </g>
+  </g>
+
+  <!-- DE -->
+  <g>
+    <rect x="423" y="80" width="354" height="160" rx="10" fill="#111C31" stroke="#22314F" stroke-width="1.5"/>
+    <text x="441" y="106" fill="#E7EEF9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">DE</text>
+    <text x="759" y="106" text-anchor="end" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">eu-central-1</text>
+    <path d="M441 118H759" stroke="#1B2942"/>
+    <text x="441" y="140" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">PATIENTS TABLE</text>
+    <text x="441" y="200" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">CLINICAL TABLE</text>
+    <use xlink:href="#lock" href="#lock" x="441" y="209"/>
+    <text x="459" y="220" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">stays in eu-central-1</text>
+
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.30;.33;.94;1" dur="20s" repeatCount="indefinite"/>
+      <text x="441" y="161" fill="#E7EEF9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">DE-Z987654321</text>
+      <text x="441" y="179" fill="#5B9CFF" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10">discloses UK-AB123456C</text>
+    </g>
+  </g>
+
+  <!-- FR -->
+  <g>
+    <rect x="802" y="80" width="354" height="160" rx="10" fill="#111C31" stroke="#22314F" stroke-width="1.5"/>
+    <text x="820" y="106" fill="#E7EEF9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">FR</text>
+    <text x="1138" y="106" text-anchor="end" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">eu-west-3</text>
+    <path d="M820 118H1138" stroke="#1B2942"/>
+    <text x="820" y="140" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">PATIENTS TABLE</text>
+    <text x="820" y="200" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">CLINICAL TABLE</text>
+    <use xlink:href="#lock" href="#lock" x="820" y="209"/>
+    <text x="838" y="220" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">stays in eu-west-3</text>
+
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.58;.61;.94;1" dur="20s" repeatCount="indefinite"/>
+      <text x="820" y="161" fill="#E7EEF9" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">FR-2790475116334</text>
+      <text x="820" y="179" fill="#5B9CFF" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10">discloses DE-Z987654321</text>
+    </g>
+  </g>
+
+  <!-- ============ residency boundary ============ -->
+  <path d="M44 268H1156" stroke="#465877" stroke-width="1.5" stroke-dasharray="7 7"/>
+  <text x="44" y="285" fill="#7488A8" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" letter-spacing="1.8">DATA RESIDENCY BOUNDARY</text>
+
+  <!-- ============ the only things that cross ============ -->
+
+  <!-- UK wire -->
+  <path id="wire-uk" d="M221 240V292" fill="none" stroke="#5B9CFF" stroke-width="2"
+        pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">
+    <animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;.07;.13;.94;1" dur="20s" repeatCount="indefinite"/>
+  </path>
+  <circle r="4" fill="#5B9CFF" opacity="0">
+    <animateMotion dur="20s" repeatCount="indefinite" calcMode="linear"
+                   keyPoints="0;0;1;1" keyTimes="0;.07;.13;1">
+      <mpath xlink:href="#wire-uk" href="#wire-uk"/>
+    </animateMotion>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.06;.08;.12;.14;1" dur="20s" repeatCount="indefinite"/>
+  </circle>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.12;.15;.94;1" dur="20s" repeatCount="indefinite"/>
+    <text x="234" y="259" fill="#5B9CFF" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">b0dbf850…0d40</text>
+  </g>
+
+  <!-- DE wire -->
+  <path id="wire-de" d="M600 240V292" fill="none" stroke="#5B9CFF" stroke-width="2"
+        pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">
+    <animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;.35;.41;.94;1" dur="20s" repeatCount="indefinite"/>
+  </path>
+  <circle r="4" fill="#5B9CFF" opacity="0">
+    <animateMotion dur="20s" repeatCount="indefinite" calcMode="linear"
+                   keyPoints="0;0;1;1" keyTimes="0;.35;.41;1">
+      <mpath xlink:href="#wire-de" href="#wire-de"/>
+    </animateMotion>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.34;.36;.40;.42;1" dur="20s" repeatCount="indefinite"/>
+  </circle>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.40;.43;.94;1" dur="20s" repeatCount="indefinite"/>
+    <text x="613" y="259" fill="#5B9CFF" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">1d7c62fc…1ee9</text>
+  </g>
+
+  <!-- FR wire -->
+  <path id="wire-fr" d="M979 240V292" fill="none" stroke="#5B9CFF" stroke-width="2"
+        pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">
+    <animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;.63;.69;.94;1" dur="20s" repeatCount="indefinite"/>
+  </path>
+  <circle r="4" fill="#5B9CFF" opacity="0">
+    <animateMotion dur="20s" repeatCount="indefinite" calcMode="linear"
+                   keyPoints="0;0;1;1" keyTimes="0;.63;.69;1">
+      <mpath xlink:href="#wire-fr" href="#wire-fr"/>
+    </animateMotion>
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.62;.64;.68;.70;1" dur="20s" repeatCount="indefinite"/>
+  </circle>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.68;.71;.94;1" dur="20s" repeatCount="indefinite"/>
+    <text x="992" y="259" fill="#5B9CFF" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">aef52014…d601</text>
+  </g>
+
+  <!-- ============ global MPI ============ -->
+  <rect x="44" y="292" width="1112" height="186" rx="10" fill="#0E1A2E" stroke="#22314F" stroke-width="1.5"/>
+  <text x="66" y="316" fill="#E7EEF9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2">GLOBAL MPI</text>
+  <text x="176" y="316" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">DynamoDB global table · replicated across all three regions</text>
+  <text x="1134" y="316" text-anchor="end" fill="#7488A8" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" letter-spacing="1.6">PSEUDONYMISED POINTERS ONLY</text>
+  <path d="M66 326H1134" stroke="#1B2942"/>
+
+  <!-- registrar query readout -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">
+    <!-- UK: own hash, no match -->
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.16;.19;.26;.28;1" dur="20s" repeatCount="indefinite"/>
+      <path d="M66 344l6 4-6 4z" fill="#5B9CFF"/>
+      <text x="80"  y="352" fill="#7488A8">QUERY national_id_hash_index =</text>
+      <text x="290" y="352" fill="#5B9CFF">b0dbf850…0d40 (own)</text>
+      <text x="480" y="352" fill="#F5A524">NO MATCH · minting new uuid</text>
+    </g>
+    <!-- DE: disclosed UK hash, match -->
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.44;.47;.54;.56;1" dur="20s" repeatCount="indefinite"/>
+      <path d="M66 344l6 4-6 4z" fill="#5B9CFF"/>
+      <text x="80"  y="352" fill="#7488A8">QUERY national_id_hash_index =</text>
+      <text x="290" y="352" fill="#5B9CFF">b0dbf850…0d40 (disclosed)</text>
+      <text x="480" y="352" fill="#2DD4BF">MATCH · patient_uuid 7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
+    </g>
+    <!-- FR: disclosed DE hash, match -->
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.72;.75;.82;.84;1" dur="20s" repeatCount="indefinite"/>
+      <path d="M66 344l6 4-6 4z" fill="#5B9CFF"/>
+      <text x="80"  y="352" fill="#7488A8">QUERY national_id_hash_index =</text>
+      <text x="290" y="352" fill="#5B9CFF">1d7c62fc…1ee9 (disclosed)</text>
+      <text x="480" y="352" fill="#2DD4BF">MATCH · patient_uuid 7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
+    </g>
+  </g>
+  <path d="M66 360H1134" stroke="#1B2942"/>
+
+  <!-- the row each query lands on -->
+  <rect x="58" y="389" width="1084" height="24" rx="4" fill="#2DD4BF" opacity="0">
+    <animate attributeName="opacity" values="0;0;.10;.10;0;0" keyTimes="0;.44;.47;.54;.56;1" dur="20s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="58" y="413" width="1084" height="24" rx="4" fill="#2DD4BF" opacity="0">
+    <animate attributeName="opacity" values="0;0;.10;.10;0;0" keyTimes="0;.72;.75;.82;.84;1" dur="20s" repeatCount="indefinite"/>
+  </rect>
+
+  <text x="66"  y="380" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">NATIONAL_ID_HASH</text>
+  <text x="380" y="380" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">REGION</text>
+  <text x="470" y="380" fill="#465877" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6">PATIENT_UUID</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.22;.25;.94;1" dur="20s" repeatCount="indefinite"/>
+      <text x="66"  y="406" fill="#7488A8">b0dbf850…0d40</text>
+      <text x="380" y="406" fill="#E7EEF9">uk</text>
+      <text x="470" y="406" fill="#2DD4BF">7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
+    </g>
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.50;.53;.94;1" dur="20s" repeatCount="indefinite"/>
+      <text x="66"  y="430" fill="#7488A8">1d7c62fc…1ee9</text>
+      <text x="380" y="430" fill="#E7EEF9">de</text>
+      <text x="470" y="430" fill="#2DD4BF">7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
+    </g>
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.78;.81;.94;1" dur="20s" repeatCount="indefinite"/>
+      <text x="66"  y="454" fill="#7488A8">aef52014…d601</text>
+      <text x="380" y="454" fill="#E7EEF9">fr</text>
+      <text x="470" y="454" fill="#2DD4BF">7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
+    </g>
+  </g>
+
+  <!-- the payoff: three records, one identity -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.85;.88;.94;1" dur="20s" repeatCount="indefinite"/>
+    <path d="M798 396h10v62h-10" fill="none" stroke="#2DD4BF" stroke-width="2"/>
+    <circle cx="808" cy="427" r="3" fill="#2DD4BF">
+      <animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <text x="824" y="423" fill="#2DD4BF" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="2">ONE IDENTITY</text>
+    <text x="824" y="440" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10">fr linked to uk transitively, through de</text>
+  </g>
+
+  <!-- footer -->
+  <text x="44" y="502" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">crossing the border: salted hashes and uuids · staying put: every clinical record</text>
+  <text x="1156" y="502" text-anchor="end" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">github.com/tobsterin/Multi-Region-EHR-API</text>
+</svg>
