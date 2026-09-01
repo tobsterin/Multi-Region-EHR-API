@@ -22,55 +22,59 @@ Sharing healthcare data across countries is complicated. This project takes a pr
 *Prototype note: table count and record schemas are deliberately simplified; the focus is the residency and linking architecture, not clinical data modelling.*
 
 ```mermaid
+
+---
+config:
+  layout: elk
+---
 flowchart TB
-    A["New Patient Entry"] -- POST /patients --> AG1["Regional API Gateway x3"]
+    A["New Patient Entry"] -->|"POST /patients"| AG1["Regional API Gateway x3"]
     AG1 --> AUTH1["Cognito JWT Authorizer"]
-    AUTH1 -- valid token (clinicians only) --> WL["Write Lambda"]
-    AUTH1 -- no/invalid token --> X["401 Unauthorized"]
-    WL -- PutItem --> B["Regional DynamoDB<br>Patients Table"]
-    B -- DynamoDB Stream --> C["Registrar Lambda:<br>hash own ID, then<br>disclosed foreign IDs"]
-    C -- Query national_id_hash_index --> D["MPI Global Table"]
-    D -- Patient Exists? --> E{"Match Found?"}
-    E -- Yes --> F["Link to Existing<br>Patient UUID"]
-    E -- No --> G["Create New<br>Patient UUID"]
-    F -- Conditional PutItem --> D
-    G -- Conditional PutItem --> D
+    AUTH1 -->|"valid token, clinicians only"| WL["Write Lambda"]
+    AUTH1 -->|"no or invalid token"| X["401 Unauthorized"]
+    WL -->|"PutItem"| B["Regional DynamoDB<br>Patients Table"]
+    B -->|"DynamoDB Stream"| C["Registrar Lambda:<br>hash own ID, then<br>disclosed foreign IDs"]
+    C -->|"Query national_id_hash_index"| D["MPI Global Table"]
+    D --> E{"Match Found?"}
+    E -->|"Yes"| F["Link to Existing<br>Patient UUID"]
+    E -->|"No"| G["Create New<br>Patient UUID"]
+    F -->|"Conditional PutItem"| D
+    G -->|"Conditional PutItem"| D
     F --> MT["Regional Mapping Table<br>patient_uuid to patient_id"]
     G --> MT
-    I["Clinic Visit:<br>Patient Arrives"] -- Informs of Records<br>Abroad --> J["Clinicians"]
-    J -- GET /mpi --> AG2["MPI API Gateway x3"]
+    I["Clinic Visit:<br>Patient Arrives"] -->|"Informs of records abroad"| J["Clinicians"]
+    J -->|"GET /mpi"| AG2["MPI API Gateway x3"]
     AG2 --> AUTH2["Cognito JWT Authorizer"]
-    AUTH2 -- valid token (clinicians only) --> K["Search Lambda"]
-    AUTH2 -- no/invalid token --> X1["401 Unauthorized"]
-    K -- get salt --> L["Parameter Store"]
-    L -- salt --> K
-    K -- Query with Hash --> D
-    D -- Match Found --> M{"Patient<br>Found?"}
-    M -- Yes --> N["Inform Clinician<br>of Match"]
-    M -- No --> O["No Match Found"]
-    J -- GET encounters/observations --> AG3["Clinical API Gateway x6"]
+    AUTH2 -->|"valid token, clinicians only"| K["Search Lambda"]
+    AUTH2 -->|"no or invalid token"| X1["401 Unauthorized"]
+    K -->|"get salt"| L["Parameter Store"]
+    L -->|"salt"| K
+    K -->|"Query with hash"| D
+    D -->|"Match found"| M{"Patient<br>Found?"}
+    M -->|"Yes"| N["Inform Clinician<br>of Match"]
+    M -->|"No"| O["No Match Found"]
+    J -->|"GET encounters or observations"| AG3["Clinical API Gateway x6"]
     AG3 --> AUTH3["Cognito JWT Authorizer"]
-    AUTH3 -- valid token (clinicians only) --> CL["Encounter / Observation<br>Lambdas"]
-    AUTH3 -- no/invalid token --> X1["401 Unauthorized"]
-    CL -- Query PK + begins_with SK --> CV["Regional DynamoDB<br>Clinical Table"]
+    AUTH3 -->|"valid token, clinicians only"| CL["Encounter and Observation<br>Lambdas"]
+    AUTH3 -->|"no or invalid token"| X1
+    CL -->|"Query PK and begins_with SK"| CV["Regional DynamoDB<br>Clinical Table"]
 
-
-     A:::creation
-     B:::creation
-     C:::lambda
-     D:::database
-     MT:::database
-     E:::decision
-     I:::clinician
-     J:::clinician
-     K:::lambda
-     L:::database
-     M:::decision
-     AUTH1:::auth
-     AUTH2:::auth
-     AUTH3:::auth
-     CL:::lambda
-     CV:::database
+    A:::creation
+    B:::creation
+    C:::lambda
+    D:::database
+    MT:::database
+    E:::decision
+    I:::clinician
+    J:::clinician
+    K:::lambda
+    L:::database
+    M:::decision
+    AUTH1:::auth
+    AUTH2:::auth
+    AUTH3:::auth
+    CL:::lambda
+    CV:::database
     classDef creation fill:#f0fdf4,stroke:#4ade80
     classDef lambda fill:#eef2ff,stroke:#818cf8
     classDef database fill:#f0f9ff,stroke:#38bdf8
