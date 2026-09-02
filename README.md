@@ -1,24 +1,24 @@
-# Multi-Region EHR API (Prototype)
+# Multi-Region EHR API
 
 <img src="./assets/federated-identity.svg" width="100%"
      alt="Three patient records for the same person — in the UK, Germany and France — resolving to one pseudonymised identity in a global master patient index, while every clinical record stays in its own region" />
 
-A cross-border health record prototype designed to respect **GDPR** and **NHS DSPT** requirements. It follows simplified **FHIR R4 structures**.  
-The aim is to demonstrate how a federated model can allow clinicians in the UK, Germany, and France to locate and view records without centralising clinical data.
+A cross-border health record prototype built on AWS.
+UK · Germany · France
+Terraform · Python · FHIR R4 · DynamoDB · Lambda · API Gateway · Cognito
+
+The prototype explores a simple constraint:
+
+**The patient can cross a border. The clinical record doesn't have to.**
+
+One person can have records in several healthcare systems, each using its own national identifier. Those systems need to recognise that the records belong to the same person — without building a central clinical database. So the federated Master Patient Index stores pseudonymised identifiers and UUIDs, never clinical records.
+
+The current implementation covers regional patient and clinical stores, pseudonymised identity linking, authentication and RBAC, automated MPI registration, and the infrastructure to support federated retrieval. Cross-border clinical retrieval is the next milestone.
 
 ---
 
-## 1. Overview
+## 1. Core Architecture
 
-Sharing healthcare data across countries is complicated. This project takes a practical approach: **keep data in the patient’s home region**, while allowing clinicians to locate records when needed; cross-region viewing is the next milestone (see Roadmap).
-
-* **Federated Master Patient Index (MPI):** Links the same person across regions without exposing raw identifiers.
-* **Serverless Architecture:** Built fully on AWS (Lambda, API Gateway, DynamoDB).
-* **Data Residency:** Regional DynamoDB tables store medical data; the Global MPI stores *only* pseudonymised pointers.
-
----
-
-## 2. Core Architecture (Currently Implemented)
 *Prototype note: table count and record schemas are deliberately simplified; the focus is the residency and linking architecture, not clinical data modelling.*
 
 ```mermaid
@@ -80,21 +80,87 @@ flowchart TB
     
 ```
 
-* **Regional Vaults:** Each country (UK/DE/FR) has its own DynamoDB table for Patient resources.
-* **Clinical Vaults:** Each country has a second DynamoDB table (`clinical`) storing Encounter and Observation resources under a shared key schema (`PK = PATIENT#<id>`, `SK = <TYPE>#<datetime>#<id>`), so one Query per resource type returns a patient's clinical history in chronological order within that type.
-* **DynamoDB Global Table (MPI):** Stores the pseudonymised Master Patient Index (hashes + UUIDs). Read returns existence, region and UUID only; the hash value is never disclosed.
-* **Regional Mapping Tables:** One `mapping_table_<region>` per country, holding `patient_uuid → patient_id`. The MPI answers *which region* holds a record, but a regional clinical table is keyed on that region's own `patient_id` (`PK = PATIENT#<id>`), so the global UUID cannot fetch a record by itself. The mapping table is where a global identity is exchanged for a local one, **inside the region that issued it** — the local patient ID never crosses a border. The registrar populates it on insert; see §4 for the read path it enables.
-* **Secure Linking:** Lambda functions hash national IDs using a salt stored in **AWS Systems Manager Parameter Store**.
-* **Edge & API Layer:** Regional HTTP APIs managed via **Amazon API Gateway**.
-* **Compute (Lambdas):** 
-    * **Search Service:** Python Lambda for ID hashing and MPI lookup.
-    * **CRUD Services:** Create/Read/Update Lambdas for Patient, encounter, and observation resources.
-* **Shared Lambda Layer:** A per-region layer publishes `ehr_helpers` (`parse_groups` for the Cognito group check, `salted_hash` for pseudonymisation). All 11 handlers import from it, so the authorisation check and the hash function each exist once rather than being copy-pasted per function.
-* **Auto-Registration (DynamoDB Streams):** When a new patient is created in a regional vault, the stream triggers a registrar Lambda. It hashes the record's **own** national ID and queries the MPI first — so a replayed stream record or a re-registration of the same ID resolves to the existing UUID instead of minting a second one. Only if that misses does it hash the disclosed foreign IDs and try those. On a match it links the new record to the existing UUID; otherwise it creates a new one. Because each region's MPI row is keyed `(patient_uuid, region)`, one person accumulates one row per region under a single UUID.
-* **Guarded Writes:** Both registrar writes use DynamoDB `ConditionExpression`s, so an existing MPI row cannot be silently overwritten with a different `national_id_hash`, nor a mapping row with a different `patient_id`.
-* **Cross-Border Access:** No clinical data crosses borders; only hashes and UUIDs reach the global MPI.
-* **One-Way Boundary:** *The MPI never writes to a regional vault.* Data flows regional → global only: a vault's stream feeds the registrar, and the registrar writes to the MPI and to its own region's mapping table. Nothing on the MPI side reaches back into a vault. This is why disclosed `knownForeignIds` stay on the record that disclosed them rather than being stripped after matching — removing them would mean MPI machinery writing into a regional vault, which this rule forbids. The rule is checkable against the IAM policies: the registrar holds no write permission on any patients table.
-* Restrict API Gateway using **Amazon Cognito** (User Pools, JWT authorizer on every route, RBAC via cognito groups (clinicians, auditors): patient-data routes are clinicians-only, fail-closed; auditors deliberately get no record access (data minimisation), their surface arrives with the logging layer).
+### Regional data
+
+Each country has:
+
+* a `patients` table containing FHIR Patient resources
+* a `clinical` table containing Encounter and Observation resources
+* a `mapping_table_<region>` mapping the global `patient_uuid` to that region's own `patient_id`
+
+The federated MPI contains only the pseudonymised identity layer.
+
+### The regional identity boundary
+
+A regional clinical table is keyed by its own patient ID:
+
+```text
+PK = PATIENT#<local patient_id>
+SK = <TYPE>#<datetime>#<id>
+```
+
+The global UUID therefore cannot directly retrieve a clinical record. The mapping table is the boundary between the two identities, and it lives inside the region that issued the local ID — so that ID never crosses a border.
+
+### Shared code
+
+A per-region Lambda layer publishes `ehr_helpers`: `parse_groups` for the Cognito group check, `salted_hash` for pseudonymisation. All 11 handlers import from it, so the authorisation check and the hash function each exist once rather than being copied per function. Both take everything they need as arguments, which is what makes them testable without AWS.
+
+---
+
+## 2. Identity linking
+
+When a new patient is registered, the regional record is written first. A DynamoDB Stream then invokes the registrar, which:
+
+1. hashes the record's own national ID;
+2. searches the MPI;
+3. if there is no match, hashes any disclosed foreign identifiers;
+4. links to an existing UUID if one is found;
+5. otherwise creates a new UUID;
+6. writes the UUID → local patient ID mapping in the same region.
+
+The national IDs themselves never enter the global table. Both the MPI and mapping writes use DynamoDB conditional expressions, so an established binding cannot silently be replaced by a conflicting one.
+
+The invariant is deliberate: **one local `patient_id` per `patient_uuid` per region.** A write that would bind an established identity to a different local record is refused rather than overwriting it. This prevents one local record from being silently absorbed into another person's identity.
+
+That guard is an integrity constraint, not an identity check. It protects an identity once a binding exists, but it cannot establish that a disclosed foreign identifier actually belongs to the person presenting it. That is a separate trust problem addressed in the roadmap.
+
+Searching by the record's *own* hash first also makes the registrar idempotent: a replayed stream record resolves to the UUID already written rather than minting a second one.
+
+### The interesting case
+
+The same person arrives in three systems.
+
+**United Kingdom**
+
+```text
+UK national ID
+      ↓
+new UUID
+```
+
+**Germany**
+
+```text
+German national ID
+      ↓
+discloses UK national ID
+      ↓
+existing UUID
+```
+
+**France**
+
+```text
+French national ID
+      ↓
+discloses German national ID
+      ↓
+German record already carries the inherited UUID
+      ↓
+same UUID
+```
+
+France never needs to know about the UK. It only needs to know about Germany, and the chain still resolves to one identity.
 
 ---
 
@@ -102,9 +168,10 @@ flowchart TB
 
 ### 3.1 Prerequisites
 
-* An AWS account with credentials configured (aws configure)
-* Terraform >= 1.2
-* **The pseudonymisation salt:**
+* AWS account with credentials configured
+* Terraform ≥ 1.2
+* A pseudonymisation salt in AWS Systems Manager Parameter Store, in all three regions:
+
 ```bash
 for r in eu-west-2 eu-central-1 eu-west-3; do
   aws ssm put-parameter --name /mpi/salt --type SecureString \
@@ -112,7 +179,7 @@ for r in eu-west-2 eu-central-1 eu-west-3; do
 done
 ```
 
-The same salt must be used in every region: cross-border matching works by comparing hashes, so a hash written in one region must be reproducible in another.
+The same salt must be used in every region. Cross-border matching works by comparing hashes, so a hash written in one region has to be reproducible in another.
 
 ### 3.2 Deploy
 
@@ -122,7 +189,7 @@ terraform init
 terraform apply
 ```
 
-One apply builds the full stack across all three regions. The API invoke URLs are printed as Terraform outputs.
+One apply builds the stack across all three regions. The API invoke URLs are returned as Terraform outputs.
 
 ### 3.3 Test users
 
@@ -199,42 +266,43 @@ obs() { api "$OBS"     "$@"; }
 mpi() { api "$MPI"     "$@"; }
 ```
 
-Tokens expire after one hour; re-run mint when everything starts returning 401.
+Tokens expire after one hour; re-run `mint` when everything starts returning 401.
 
-### 3.5 Walkthrough: auth and RBAC
+---
+
+## 4. Authentication and RBAC
+
+Every API route is protected by a Cognito JWT authoriser. The prototype has two groups: `clinicians` and `auditors`. Clinicians can reach patient-data routes; auditors can authenticate but deliberately receive no patient-data access.
 
 ```bash
 region uk && mint
 
-pat POST /patients "$CLIN" -d @data/patient_uk_example.json   # a record to read
+pat POST /patients "$CLIN" -d @data/patient_uk_example.json
 
 curl -i "${PATIENT%/}/patients/pat-uk-200"        # no token
 HTTP/2 401
-{"message":"Unauthorized"}
 
 pat GET /patients/pat-uk-200 "$CLIN"              # clinician
 HTTP/2 200
-{"resourceType": "Patient", "patient_id": "pat-uk-200", ...}
 
 pat GET /patients/pat-uk-200 "$AUD"               # auditor
 HTTP/2 403
-{"error": "User is not authorised to perform this action"}
 ```
 
-Same endpoint, same valid token type, different group, different answer. Auditors are authenticated but deliberately hold no patient-data access (data minimisation); patient-data routes are clinicians-only and fail closed.
+Same endpoint. Same authentication mechanism. Different authorisation result.
 
-### 3.6 Walkthrough: cross-border identity linking
+---
 
-The same person is registered in all three regions, each record disclosing the one before it: UK discloses nothing, DE names the UK ID, FR names the DE ID.
+## 5. Follow a patient across borders
 
-The UK record was registered in 3.5. Now register the same person in Germany, disclosing their UK national ID (see data/patient_uk_example.json and data/patient_de_example.json — the DE record carries "knownForeignIds": [{"national_id": "<the UK ID>"}]):
+The UK record was registered in §4. Germany now registers the same person and discloses the UK national ID:
 
 ```bash
 region de
 pat POST /patients "$CLIN" -d @data/patient_de_example.json
 ```
 
-Each write triggers the registrar via DynamoDB Streams. Now query the MPI for either national ID, from either region:
+The registrar matches the disclosed identifier against the MPI. Either identifier can now locate the corresponding regional record:
 
 ```bash
 region de
@@ -248,112 +316,146 @@ HTTP/2 200
 [{"region": "de", "patient_uuid": "7956c0ad-a8b6-44d6-add2-940f4f90c745"}]
 ```
 
-Same UUID from both regions: the registrar matched the disclosed foreign ID against the MPI and linked the two records to one identity. Only salted hashes and UUIDs ever crossed a border; the response returns existence, region and UUID — never the hash or any identifier.
+The response exposes the region and the UUID. It does not expose the hash or the underlying identifier.
 
-Now register the same person a third time, in France. The FR record never mentions the UK at all — it discloses only the German ID (`data/patient_fr_example.json` carries `"knownForeignIds": [{"national_id": "<the DE ID>"}]`):
+### Then France joins
+
+The French record discloses only the German identifier:
 
 ```bash
 region fr
 pat POST /patients "$CLIN" -d @data/patient_fr_example.json
-
-mpi GET "/mpi?national_id=<DE national ID>" "$CLIN"
-HTTP/2 200
-[{"region": "de", "patient_uuid": "7956c0ad-a8b6-44d6-add2-940f4f90c745"}]
 
 mpi GET "/mpi?national_id=<FR national ID>" "$CLIN"
 HTTP/2 200
 [{"region": "fr", "patient_uuid": "7956c0ad-a8b6-44d6-add2-940f4f90c745"}]
 ```
 
-The German ID France disclosed was already in the index, carrying the UUID Germany inherited from the UK. France's own row now carries that same UUID — so a record that never mentions Britain still resolves to the same person, and links compose transitively along the chain of disclosures.
+France never mentions Britain. The UUID still resolves to the same person.
 
-Registration order matters. Linking is one-directional: it is driven by what the *incoming* record discloses. Each record here names the one registered before it — DE names UK, FR names DE — so registering in that order resolves all three to a single identity. Registered the other way round, an incoming record finds nothing to match and the earlier records disclose nothing, so the same person ends up with several unlinked UUIDs — silently, with no error. Reciprocal disclosure and a back-fill pass for records registered out of order are future work.
+### Registration order
 
-### 3.7 Clinical records
+This prototype deliberately exposes an interesting limitation. Linking is driven by what the *incoming* record discloses, so UK → DE → FR works because each new record names an identifier already in the MPI. Register the same records in another order and the links can remain unresolved — silently, with no error. Reciprocal disclosure and a back-fill process for out-of-order registration are future work.
+
+---
+
+## 6. Clinical records
+
+Clinical data stays regional.
 
 ```bash
 enc GET /patients/pat-uk-200/encounters   "$CLIN"
 obs GET /patients/pat-uk-200/observations "$CLIN"
 ```
 
-Each returns the patient's records of that type in chronological order. Updates are PATCH requests that quote the full sort key back and change only the fields supplied in the body.
+Encounter and Observation resources share a key structure, so records can be queried by patient and resource type in chronological order within that type. Updates are PATCH requests against the existing sort key, changing only the fields supplied in the body.
 
 ---
 
-## 4. Data Flow (Clinic Visit)
+## 7. Data Flow — Clinic Visit
 
 <img src="./assets/federated-read.svg" width="100%"
      alt="The federated read path: a clinician in France resolves a patient UUID in the global MPI, exchanges it for a local patient id in the UK regional mapping table, fetches the clinical record from the UK region, and holds it in memory only" />
 
-The **regional mapping tables** are the hinge of this flow. The MPI answers *which region* and *which UUID*, but a regional clinical table is keyed on that region's own `patient_id` (`PK = PATIENT#<id>`) — so the UUID alone cannot fetch a record. Each region keeps its own `mapping_table_<region>` holding `patient_uuid → patient_id`, written by the registrar at insert time. A foreign lookup therefore resolves the UUID globally, exchanges it for a local ID *inside* the region that issued it, and reads the record there. The local patient ID never leaves its own region, and the requesting region persists nothing.
+The regional mapping tables are the hinge of the read path.
 
-The tables are deployed and populated in all three regions; the read path that consumes them is the next milestone (steps 4–5 below).
+The MPI answers *which region* and *which UUID*. The regional mapping table answers *which local patient ID*. Only then can the regional clinical store be queried. The local patient ID stays inside the region that issued it, and the requesting region persists nothing.
 
-1.  **Patient Identification:** Patient arrives and informs the clinician of records in another country.
-2.  **Search:** Clinician enters the foreign National Health ID.
-3.  **Hash & Lookup:** Search Lambda retrieves the salt, hashes the ID, and queries the MPI.
-4.  **Federated Retrieval:** If a match is found, the system fetches relevant clinical data from that specific country’s regional table. Federated retrieval follows authentication. **(planned)** 
-5.  **Aggregation:** Records are merged **in memory** and displayed to the clinician. **Nothing is written centrally. (planned)**
-6.  **Analysis:** New notes trigger DynamoDB Streams → Analysis Lambda → Coded insights. **(planned)**
-7.  **Visualization:** Frontend aggregates insights into a clinical timeline (browser-side only). **(planned)**
+### Planned read path
 
-*  **Creation:** New records are stored only in the region where they are created, maintaining strict data sovereignty.
-*  **Audit:** Logs are stored in both the requesting region (access) and the source region (data retrieval). **(planned)**
+1. Patient identifies a record held abroad.
+2. Clinician supplies the foreign National Health ID.
+3. Search Lambda hashes the identifier and queries the MPI.
+4. The target region resolves `patient_uuid → patient_id`.
+5. Clinical records are retrieved from the target region.
+6. Records are held in memory for presentation.
+7. Nothing is written to the global MPI or to the requesting region.
 
----
-
-## 5. Development, Operations & Threat Model
-
-* **Infrastructure as Code:** Terraform manages all resources.
-* **Monitoring:** CloudWatch Logs.
-* **Continuous Validation:** GitHub Actions runs `terraform fmt`, `terraform validate` and `ruff` on every push; no AWS credentials required.
-* **Testing:** Manual end-to-end smoke tests across 3 regions.
-* **Policy Enforcement:** Deny-by-default IAM policies.
-
-**Zero Trust Approach:**
-* **Cross-Region Data Leakage:** Mitigated by ensuring no raw data is stored globally (only pseudonymised MPI pointers cross borders). **(implemented)**
-* **Silent Record Overwrite:** Mitigated by conditional writes on both registrar puts, so an established UUID→hash or UUID→patient_id binding cannot be replaced by a conflicting one. **(implemented)**
-* **Unauthorized Access:** Mitigated via IAM least privilege, and role-based access, **(implemented)** and Cognito MFA. **(planned)**
-* **Lateral Movement:** Mitigated via separate VPCs (prototype) or AWS accounts (production) with private API endpoints. **(planned)**
+The tables required for this flow are deployed and populated. Federated retrieval is the next implementation milestone.
 
 ---
 
-## 6. Roadmap & Future Work
+## 8. Boundary rules
 
-### Phase 1: Prototype Completion
-* **Security & Network:** 
-    * Enforce MFA.
-    * Protect frontend/API with **Amazon CloudFront + AWS WAF**.
-    * Move Lambdas to private subnets within VPCs and route traffic via **VPC Endpoints (PrivateLink)**.
-    * Add regional **AWS KMS Customer Managed Keys (CMKs)** for encryption at rest.
-* **Data & Operations:**
-    * Implement transient cross-border memory access (no data persistence).
-    * **CI/CD Pipeline:** the validation workflow is in place (fmt, validate, lint); automated deployment on merge is still to come.
-    * **Reciprocal MPI linking:** linking is driven by what an incoming record discloses, so registration order decides whether two records resolve to one identity; add a back-fill pass so a later disclosure links records registered earlier.
-    * **Paginate clinical reads:** clinical reads currently return only the first 1 MB; handle LastEvaluatedKey to page through full histories.
-    * **Federated read:** the regional mapping tables are deployed and populated, but nothing consumes them yet. Wire the clinical read handlers to resolve `patient_uuid → patient_id` in the target region and fetch the record there (§4, steps 4–5).
-    * **One mapping row per UUID per region:** `mapping_table_<region>` is keyed on `patient_uuid` alone, so if the same person is registered twice *within* one region the second write fails its condition check and that `patient_id` is silently dropped. Needs a composite key or an explicit duplicate-resolution path.
-    * **Audit:** Enforce CloudTrail API auditing with 14-day retention and log "Purpose of Use".
-    * **Frontend:** Build clinician-facing UI hosted on S3 + CloudFront.
+The architecture has one deliberately strict rule:
 
-### Phase 2: Production Readiness
-* **Compliance & Nuance:**
-    * **UK (NHS DSPT):** Strict auditing, zero trust, data minimization.
-    * **EU (GDPR):** Data residency and automated workflows for the "Right to Erasure" (Art. 17).
-    * Immutable auditing via CloudTrail + S3 Object Lock (7–10 year retention).
-* **Advanced Architecture:**
-    * **Historical records integration for the MPI:** Bulk migration mechanism for onboarding historical record into the system including handling the global-table replication race, which can otherwise mint duplicate UUIDs for one person during parallel regional imports.
-    * **Handle missing parent maps in nested updates:** SET period.end fails if a record has no period map.
-    * Multi-Account Strategy (AWS Organizations) separating Security, Workloads, and Research OUs.
-    * Migrate salt to **AWS Secrets Manager** with automated rotation.
-    * Application hardening: SQS Dead Letter Queues (DLQs), Provisioned Concurrency, and rate limiting.
-* **Clinical & AI Integration:**
-    * **Expanded FHIR & SNOMED CT:** Full integration of real clinical codes (e.g., Asthma, MRI).
-    * **EventBridge/SNS Alerting** for critical observations.
-    * **AI Analysis:** Comprehend Medical integration for cross-border context and language translation.
-    * **Longitudinal Pattern Detection** and Visual Clinical Timelines via QuickSight or custom frontend.
+**The MPI never writes to a regional vault.**
+
+```text
+Regional vault
+      │
+      │ DynamoDB Stream
+      ▼
+ Registrar
+      │
+      ├──────► Global MPI
+      │
+      └──────► Regional mapping table
+```
+
+There is no reverse path from the MPI into a regional patient or clinical table. It is also why disclosed `knownForeignIds` stay on the record that disclosed them rather than being stripped after matching — removing them would mean MPI machinery writing into a regional vault.
+
+The rule is checkable rather than aspirational: the registrar holds no write permission on any patients table.
 
 ---
 
-## 7. License
+## 9. Operations & Threat Model
+
+### Infrastructure
+
+* Terraform manages the infrastructure.
+* GitHub Actions runs `terraform fmt`, `terraform validate` and `ruff` on every push, with no AWS credentials required.
+* CloudWatch provides application logging.
+* Manual end-to-end smoke tests exercise the three regions.
+* IAM policies deny by default.
+
+### Current protections
+
+**Cross-region data leakage** — only pseudonymised MPI pointers cross regions; clinical data remains regional.
+
+**Silent identity overwrite** — conditional writes prevent established UUID → hash and UUID → patient ID bindings from being replaced by conflicting values.
+
+**Unauthorised access** — Cognito JWT authorisation, Cognito groups and least-privilege IAM restrict patient-data routes to clinicians, fail-closed.
+
+### Still to implement
+
+* Cognito MFA
+* CloudFront + WAF
+* Private regional networking
+* Regional KMS customer-managed keys
+* CloudTrail auditing and purpose-of-use logging
+* Stronger isolation between regional workloads
+
+---
+
+## 10. Roadmap
+
+### Prototype completion
+
+* **Federated clinical read** — the regional mapping tables are deployed and populated, but nothing consumes them yet. Wire the clinical read handlers to resolve `patient_uuid → patient_id` in the target region and fetch the record there (§7, steps 4–5).
+* **Transient cross-border memory access** — no data persistence in the requesting region.
+* **Reciprocal MPI linking** — linking is driven by what an incoming record discloses, so registration order decides whether two records resolve to one identity; add a back-fill pass so a later disclosure links records registered earlier.
+* **Paginate clinical reads** — reads currently return only the first 1 MB; handle `LastEvaluatedKey` to page through full histories.
+* **Verify disclosed foreign identifiers** — the registrar currently trusts that a disclosed foreign ID belongs to the person presenting it. The conditional writes protect existing identity bindings, but they cannot establish that the supplied identifier belongs to the patient. The intended controls are clinician attestation recorded at registration, MFA on the clinician's account, and out-of-band confirmation with the patient's home region.
+* **Stream failure handling** — bound retries, bisect batches on error, and add a dead-letter queue, so a permanently failing registration surfaces instead of ageing out of the stream.
+* **CI/CD pipeline** — the validation workflow is in place; automated deployment on merge is still to come.
+* **Audit** — CloudTrail API auditing with 14-day retention, logging "Purpose of Use".
+* **MFA** and a clinician-facing **frontend** on S3 + CloudFront.
+
+### Production readiness
+
+* **Compliance** — UK NHS DSPT (strict auditing, zero trust, data minimisation); EU GDPR (data residency and automated Right to Erasure workflows); immutable auditing via CloudTrail + S3 Object Lock.
+* **Historical MPI migration** — bulk onboarding of existing records, including the global-table replication race that can otherwise mint duplicate UUIDs for one person during parallel regional imports.
+* **Stronger pseudonymisation** — migrate from salted SHA-256 to HMAC-SHA256 or a KDF. Note this invalidates every stored hash and requires re-registration.
+* **Nested update handling** — `SET period.end` fails if a record has no `period` map.
+* **Multi-account strategy** (AWS Organizations) separating Security, Workloads and Research OUs.
+* **Secrets Manager** for the salt, with rotation.
+* **Application hardening** — SQS dead letter queues, provisioned concurrency, rate limiting.
+* **Expanded FHIR and SNOMED CT** — full integration of real clinical codes.
+* **Event-driven clinical alerts** via EventBridge/SNS, and longitudinal analysis and visualisation.
+
+---
+
+## 11. License
+
 MIT
