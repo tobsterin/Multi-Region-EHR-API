@@ -13,6 +13,8 @@ The prototype explores a simple constraint:
 
 One person can have records in several healthcare systems, each using its own national identifier. Those systems need to recognise that the records belong to the same person — without building a central clinical database. So the federated Master Patient Index stores pseudonymised identifiers and UUIDs, never clinical records.
 
+That constraint is regulatory as much as architectural. **GDPR** governs where personal data may lawfully reside, and **NHS DSPT** requires strict auditing, zero trust and data minimisation. Residency, pseudonymisation and least-privilege access are requirements here, not preferences — which is why they show up as hard boundaries in the design rather than as configuration.
+
 The current implementation covers regional patient and clinical stores, pseudonymised identity linking, authentication and RBAC, automated MPI registration, and the infrastructure to support federated retrieval. Cross-border clinical retrieval is the next milestone.
 
 ---
@@ -411,20 +413,24 @@ The rule is checkable rather than aspirational: the registrar holds no write per
 
 ### Current protections
 
-**Cross-region data leakage** — only pseudonymised MPI pointers cross regions; clinical data remains regional.
+Each maps to a requirement named at the top of this document, and each is enforced structurally rather than by convention.
 
-**Silent identity overwrite** — conditional writes prevent established UUID → hash and UUID → patient ID bindings from being replaced by conflicting values.
+**Cross-region data leakage** — only pseudonymised MPI pointers cross regions; clinical data remains regional. What actually crosses a border is a salted hash and a UUID, neither of which identifies a person without the salt, and the salt never leaves Parameter Store. *GDPR residency; DSPT data minimisation.*
 
-**Unauthorised access** — Cognito JWT authorisation, Cognito groups and least-privilege IAM restrict patient-data routes to clinicians, fail-closed.
+**Silent identity overwrite** — conditional writes prevent established UUID → hash and UUID → patient ID bindings from being replaced by conflicting values. *GDPR Article 5(1)(d), accuracy — though it is a patient-safety concern before it is a legal one: a wrongly merged identity files one person's clinical history under another's name.*
+
+**Unauthorised access** — Cognito JWT authorisation, Cognito groups and least-privilege IAM restrict patient-data routes to clinicians, fail-closed. Auditors authenticate successfully and are still refused. *DSPT access control; GDPR Article 32, security of processing.*
 
 ### Still to implement
 
-* Cognito MFA
-* CloudFront + WAF
-* Private regional networking
-* Regional KMS customer-managed keys
-* CloudTrail auditing and purpose-of-use logging
-* Stronger isolation between regional workloads
+The largest gap is auditing. NHS DSPT expects a record of who accessed what, when and why; the prototype has CloudWatch application logs and no access trail. Everything below is ordered by how much it matters, not by effort.
+
+* **CloudTrail auditing and purpose-of-use logging** — the gap described above, and the prerequisite for any DSPT claim.
+* **Cognito MFA** — DSPT access control. A password alone is thin protection for a clinician account that can read patient data.
+* **Regional KMS customer-managed keys** — GDPR Article 32. Encryption at rest currently uses AWS-managed keys, so the keys are not held under regional control.
+* **Private regional networking** — the APIs are public endpoints protected by authorisation alone.
+* **CloudFront + WAF** — perimeter protection and rate limiting in front of those endpoints.
+* **Stronger isolation between regional workloads** — separate AWS accounts per region in production, rather than one account with three providers.
 
 ---
 
