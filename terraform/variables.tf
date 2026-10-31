@@ -3,9 +3,3 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
-
-# Lambda Layer Variable:
-variable "lambda_layer_arn" {
-  description = "The ARN of the Lambda Layer."
-  type        = string
-}
