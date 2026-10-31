@@ -22,7 +22,7 @@
   <!-- masthead -->
   <rect x="44" y="30" width="4" height="15" fill="#2DD4BF"/>
   <text x="58" y="42" fill="#E7EEF9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="3.5">FEDERATED PATIENT IDENTITY</text>
-  <text x="1156" y="42" text-anchor="end" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">3 regions · FHIR R4 · GDPR / NHS DSPT</text>
+  <text x="1156" y="42" text-anchor="end" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="10.5">3 regions · FHIR R4 · regional data residency</text>
   <path d="M44 60H1156" stroke="#1B2942" stroke-width="1.5"/>
 
   <!-- ============ regional vaults ============ -->
@@ -151,24 +151,24 @@
     <g opacity="0">
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.16;.19;.26;.28;1" dur="20s" repeatCount="indefinite"/>
       <path d="M66 344l6 4-6 4z" fill="#5B9CFF"/>
-      <text x="80"  y="352" fill="#7488A8">QUERY national_id_hash_index =</text>
-      <text x="290" y="352" fill="#5B9CFF">b0dbf850…0d40 (own)</text>
+      <text x="80"  y="352" fill="#7488A8">GETITEM national_id_hash =</text>
+      <text x="264" y="352" fill="#5B9CFF">b0dbf850…0d40 (own)</text>
       <text x="480" y="352" fill="#F5A524">NO MATCH · minting new uuid</text>
     </g>
     <!-- DE: disclosed UK hash, match -->
     <g opacity="0">
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.44;.47;.54;.56;1" dur="20s" repeatCount="indefinite"/>
       <path d="M66 344l6 4-6 4z" fill="#5B9CFF"/>
-      <text x="80"  y="352" fill="#7488A8">QUERY national_id_hash_index =</text>
-      <text x="290" y="352" fill="#5B9CFF">b0dbf850…0d40 (disclosed)</text>
+      <text x="80"  y="352" fill="#7488A8">GETITEM national_id_hash =</text>
+      <text x="264" y="352" fill="#5B9CFF">b0dbf850…0d40 (disclosed)</text>
       <text x="480" y="352" fill="#2DD4BF">MATCH · patient_uuid 7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
     </g>
     <!-- FR: disclosed DE hash, match -->
     <g opacity="0">
       <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.72;.75;.82;.84;1" dur="20s" repeatCount="indefinite"/>
       <path d="M66 344l6 4-6 4z" fill="#5B9CFF"/>
-      <text x="80"  y="352" fill="#7488A8">QUERY national_id_hash_index =</text>
-      <text x="290" y="352" fill="#5B9CFF">1d7c62fc…1ee9 (disclosed)</text>
+      <text x="80"  y="352" fill="#7488A8">GETITEM national_id_hash =</text>
+      <text x="264" y="352" fill="#5B9CFF">1d7c62fc…1ee9 (disclosed)</text>
       <text x="480" y="352" fill="#2DD4BF">MATCH · patient_uuid 7956c0ad-a8b6-44d6-add2-940f4f90c745</text>
     </g>
   </g>

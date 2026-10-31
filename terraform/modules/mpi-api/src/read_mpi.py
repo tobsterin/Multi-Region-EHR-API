@@ -2,7 +2,6 @@ import json
 import os
 
 import boto3
-from boto3.dynamodb.conditions import Key
 from ehr_helpers import parse_groups, salted_hash
 
 dynamodb = boto3.resource("dynamodb")
@@ -32,14 +31,9 @@ def lambda_handler(event, context):
         }
 
     hashed = salted_hash(national_id, SALT)
-    response = table.query(
-        IndexName="national_id_hash_index",
-        KeyConditionExpression=Key("national_id_hash").eq(hashed),
-    )
-    items = response.get("Items", [])
-    if not items:
+    item = table.get_item(Key={"national_id_hash": hashed}).get("Item")
+    if not item:
         return {"statusCode": 404, "body": json.dumps({"error": "Patient not found"})}
-    matches = [
-        {"region": i["region"], "patient_uuid": i["patient_uuid"]} for i in items
-    ]
+    # A hash holds one identity; the list keeps the documented response shape
+    matches = [{"region": item["region"], "patient_uuid": item["patient_uuid"]}]
     return {"statusCode": 200, "body": json.dumps(matches)}

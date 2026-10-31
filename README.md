@@ -32,14 +32,14 @@ flowchart TB
     AUTH1 -->|"no or invalid token"| X["401 Unauthorized"]
     WL -->|"PutItem"| B["Regional DynamoDB<br>Patients Table"]
     B -->|"DynamoDB Stream"| C["Registrar Lambda:<br>hash own ID, then<br>disclosed foreign IDs"]
-    C -->|"Query national_id_hash_index"| D["MPI Global Table"]
+    C -->|"GetItem by national_id_hash"| D["MPI Global Table"]
     D --> E{"Match Found?"}
     E -->|"Yes"| F["Link to Existing<br>Patient UUID"]
     E -->|"No"| G["Create New<br>Patient UUID"]
-    F -->|"Conditional PutItem"| D
-    G -->|"Conditional PutItem"| D
-    F --> MT["Regional Mapping Table<br>patient_uuid to patient_id"]
-    G --> MT
+    F -->|"Conditional write"| D
+    G -->|"Conditional write"| D
+    F -->|"same transaction"| MT["Regional Mapping Table<br>patient_uuid to patient_id"]
+    G -->|"same transaction"| MT
     I["Clinic Visit:<br>Patient Arrives"] -->|"Informs of records abroad"| J["Clinicians"]
     J -->|"GET /mpi"| AG2["MPI API Gateway x3"]
     AG2 --> AUTH2["Cognito JWT Authorizer"]
@@ -47,7 +47,7 @@ flowchart TB
     AUTH2 -->|"no or invalid token"| X1["401 Unauthorized"]
     K -->|"get salt"| L["Parameter Store"]
     L -->|"salt"| K
-    K -->|"Query with hash"| D
+    K -->|"GetItem by hash"| D
     D -->|"Match found"| M{"Patient<br>Found?"}
     M -->|"Yes"| N["Inform Clinician<br>of Match"]
     M -->|"No"| O["No Match Found"]
@@ -120,13 +120,13 @@ When a new patient is registered, the regional record is written first. A Dynamo
 5. otherwise creates a new UUID;
 6. writes the UUID → local patient ID mapping in the same region.
 
-The national IDs themselves never enter the global table. Both the MPI and mapping writes use DynamoDB conditional expressions, so an established binding cannot silently be replaced by a conflicting one.
+The national IDs themselves never enter the global table. The MPI is keyed by `national_id_hash` alone, so the table itself allows only one identity per hash. A secondary index on `patient_uuid` lists every region that identity is registered in. The MPI and mapping writes go in one DynamoDB transaction, each with a conditional expression: an established binding cannot silently be replaced by a conflicting one, and a refused write leaves neither row behind.
 
 The invariant is deliberate: **one local `patient_id` per `patient_uuid` per region.** A write that would bind an established identity to a different local record is refused rather than overwriting it. This prevents one local record from being silently absorbed into another person's identity.
 
 That guard is an integrity constraint, not an identity check. It protects an identity once a binding exists, but it cannot establish that a disclosed foreign identifier actually belongs to the person presenting it. That is a separate trust problem addressed in the roadmap.
 
-Searching by the record's *own* hash first also makes the registrar idempotent: a replayed stream record resolves to the UUID already written rather than minting a second one.
+Searching by the record's *own* hash first, with a strongly consistent read, also makes the registrar idempotent: a replayed stream record resolves to the UUID already written rather than minting a second one. If a record fails, the registrar reports it and Lambda retries the batch from that record.
 
 ### The interesting case
 
@@ -361,17 +361,17 @@ Encounter and Observation resources share a key structure, so records can be que
 
 The regional mapping tables are the hinge of the read path.
 
-The MPI answers *which region* and *which UUID*. The regional mapping table answers *which local patient ID*. Only then can the regional clinical store be queried. The local patient ID stays inside the region that issued it, and the requesting region persists nothing.
+The MPI answers *which UUID* and *which regions*. The regional mapping table answers *which local patient ID*. Only then can the regional clinical store be queried. The local patient ID stays inside the region that issued it, and the requesting region persists nothing.
 
 ### Planned read path
 
-1. Patient identifies a record held abroad.
-2. Clinician supplies the foreign National Health ID.
-3. Search Lambda hashes the identifier and queries the MPI.
-4. The target region resolves `patient_uuid → patient_id`.
-5. Clinical records are retrieved from the target region.
-6. Records are held in memory for presentation.
-7. Nothing is written to the global MPI or to the requesting region.
+1. A clinician asks for a patient's history across borders, starting from the patient's record in their own region. No foreign identifier is needed.
+2. The history Lambda hashes the patient's national ID and resolves the `patient_uuid` from the MPI.
+3. It queries the MPI's `patient_uuid` index for every region that identity is registered in.
+4. It sends the UUID to each of those regions, together with the clinician's identity and purpose of use.
+5. Each region resolves `patient_uuid → patient_id` in its own mapping table, reads its clinical table, and returns the records.
+6. The requesting region combines the records in memory, labels each with the region it came from, and flags any region that did not answer, so an incomplete history never looks complete.
+7. Nothing is written to the MPI or to the requesting region, and UUIDs, hashes and local patient IDs never reach the clinician.
 
 The tables required for this flow are deployed and populated. Federated retrieval is the next implementation milestone.
 
@@ -417,7 +417,7 @@ Each is enforced structurally rather than by convention.
 
 **Cross-region data leakage** — only pseudonymised MPI pointers cross regions; clinical data remains regional. What actually crosses a border is a salted hash and a UUID, neither of which identifies a person without the salt, and the salt never leaves Parameter Store.
 
-**Silent identity overwrite** — conditional writes prevent established UUID → hash and UUID → patient ID bindings from being replaced by conflicting values. This is a patient-safety property before anything else: a wrongly merged identity files one person's clinical history under another's name.
+**Silent identity overwrite** — conditional writes prevent established hash → UUID and UUID → patient ID bindings from being replaced by conflicting values. This is a patient-safety property before anything else: a wrongly merged identity files one person's clinical history under another's name.
 
 **Unauthorised access** — Cognito JWT authorisation, Cognito groups and least-privilege IAM restrict patient-data routes to clinicians, fail-closed. Auditors authenticate successfully and are still refused.
 
@@ -438,12 +438,12 @@ The largest gap is auditing: the prototype has CloudWatch application logs and n
 
 ### Prototype completion
 
-* **Federated clinical read** — the regional mapping tables are deployed and populated, but nothing consumes them yet. Wire the clinical read handlers to resolve `patient_uuid → patient_id` in the target region and fetch the record there (§7, steps 4–5).
+* **Federated clinical read** — the regional mapping tables and the MPI's `patient_uuid` index are deployed, but nothing consumes them yet. Build the history Lambda and the per-region read it fans out to (§7).
 * **Transient cross-border memory access** — no data persistence in the requesting region.
 * **Reciprocal MPI linking** — linking is driven by what an incoming record discloses, so registration order decides whether two records resolve to one identity; add a back-fill pass so a later disclosure links records registered earlier.
 * **Paginate clinical reads** — reads currently return only the first 1 MB; handle `LastEvaluatedKey` to page through full histories.
-* **Verify disclosed foreign identifiers** — the registrar currently trusts that a disclosed foreign ID belongs to the person presenting it. The conditional writes protect existing identity bindings, but they cannot establish that the supplied identifier belongs to the patient. The intended controls are clinician attestation recorded at registration, MFA on the clinician's account, and out-of-band confirmation with the patient's home region.
-* **Stream failure handling** — bound retries, bisect batches on error, and add a dead-letter queue, so a permanently failing registration surfaces instead of ageing out of the stream.
+* **Verify disclosed foreign identifiers** — the registrar currently trusts that a disclosed foreign ID belongs to the person presenting it. The conditional writes protect existing identity bindings, but they cannot establish that the supplied identifier belongs to the patient. The intended controls are clinician attestation recorded at registration, MFA on the clinician's account, and out-of-band confirmation with the patient's home region: a one-time code sent by text or email to the contact details that region already holds, so only the real holder of the identifier can confirm the link and those details never leave the region. This matters more once federated reads follow the UUID, because a wrong link would pull another person's records into the patient's history.
+* **Stream failure handling** — failed records are now reported individually and retried, but without limit; bound the retries and add a dead-letter queue, so a permanently failing registration surfaces instead of blocking its shard until it ages out of the stream.
 * **CI/CD pipeline** — the validation workflow is in place; automated deployment on merge is still to come.
 * **Audit** — CloudTrail API auditing with 14-day retention, logging "Purpose of Use".
 * **MFA** and a clinician-facing **frontend** on S3 + CloudFront.

@@ -46,17 +46,17 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
         Effect   = "Allow"
         Resource = [data.aws_kms_key.ssm_key.arn]
       },
-      #DynamoDB Patient Stream
+      #MPI Table Read
       {
         Action = [
-          "dynamodb:Query"
+          "dynamodb:GetItem"
         ]
         Effect = "Allow"
         Resource = [
-          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*"
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table"
         ]
       },
+      #DynamoDB Patient Stream
       {
         Action = [
           "dynamodb:GetRecords",
@@ -67,7 +67,7 @@ resource "aws_iam_role_policy" "mpi_registrar_lambda_policy" {
         Effect   = "Allow"
         Resource = var.dynamodbstream_arn
       },
-      #MPI Table Wtrite
+      #MPI Table Write (TransactWriteItems is authorised per item as PutItem)
       {
         Action = [
           "dynamodb:PutItem"

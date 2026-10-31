@@ -47,12 +47,11 @@ resource "aws_iam_role_policy" "mpi_read_lambda_policy" {
       },
       {
         Action = [
-          "dynamodb:Query"
+          "dynamodb:GetItem"
         ]
         Effect = "Allow"
         Resource = [
-          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table",
-          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table/index/*"
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/mpi_global_table"
         ]
       },
       {

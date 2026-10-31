@@ -10,6 +10,7 @@ resource "aws_lambda_function" "mpi_registrar_lambda" {
   layers           = [var.lambda_layer_arn]
   handler          = "mpi_registrar.lambda_handler"
   runtime          = "python3.12"
+  timeout          = 30
   filename         = data.archive_file.mpi_registrar_archive.output_path
   source_code_hash = data.archive_file.mpi_registrar_archive.output_base64sha256
 
@@ -33,4 +34,8 @@ resource "aws_lambda_event_source_mapping" "mpi_registrar_trigger" {
   event_source_arn  = var.dynamodbstream_arn
   function_name     = aws_lambda_function.mpi_registrar_lambda.arn
   starting_position = "LATEST"
+  batch_size        = 10
+
+  # The handler reports the first failed record; Lambda retries from there
+  function_response_types = ["ReportBatchItemFailures"]
 }
