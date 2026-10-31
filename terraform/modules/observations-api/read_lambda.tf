@@ -1,7 +1,7 @@
 data "archive_file" "observations_read_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/read_observations.py"
-  output_path = "${path.module}/dist/read_observations.zip"
+  output_path = "${path.module}/dist/read_observations-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "observations_read_lambda" {

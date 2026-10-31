@@ -1,7 +1,7 @@
 data "archive_file" "helpers_layer_zip" {
   type        = "zip"
   source_dir  = "${path.module}/src"
-  output_path = "${path.module}/dist/helpers_layer.zip"
+  output_path = "${path.module}/dist/helpers_layer-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_layer_version" "helpers" {

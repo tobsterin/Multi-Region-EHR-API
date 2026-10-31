@@ -1,7 +1,7 @@
 data "archive_file" "patient_read_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/read_patient.py"
-  output_path = "${path.module}/dist/read_patient.zip"
+  output_path = "${path.module}/dist/read_patient-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "patient_read_lambda" {

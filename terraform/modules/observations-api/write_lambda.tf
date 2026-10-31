@@ -1,7 +1,7 @@
 data "archive_file" "observations_write_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/write_observations.py"
-  output_path = "${path.module}/dist/write_observations.zip"
+  output_path = "${path.module}/dist/write_observations-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "observations_write_lambda" {
