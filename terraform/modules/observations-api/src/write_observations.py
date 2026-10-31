@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import boto3
 from botocore.exceptions import ClientError
-from ehr_helpers import parse_groups
+from ehr_helpers import fhir_id, get_field, parse_groups, reference_id
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
@@ -29,41 +29,49 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "Request body is not valid JSON"}),
             }
+    if not isinstance(event, dict):
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Request body must be a JSON object"}),
+        }
 
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type}")
 
     if resource_type == "Observation":
-        required = [
-            "id",
-            "status",
-            "category",
-            "code",
-            "subject",
-            "encounter",
-            "effectiveDateTime",
-            "component",
-        ]
-        missing = [f for f in required if not event.get(f)]
-        if missing:
+        # Each required field in the one form we accept; None if missing or in any other form
+        fields = {
+            "id": fhir_id(event.get("id")),
+            "status": get_field(event, "status"),
+            "category[0].coding[0].display": get_field(
+                event, "category", 0, "coding", 0, "display"
+            ),
+            "code.coding[0].display": get_field(event, "code", "coding", 0, "display"),
+            "subject.reference": reference_id(event.get("subject"), "Patient"),
+            "encounter.reference": reference_id(event.get("encounter"), "Encounter"),
+            "effectiveDateTime": get_field(event, "effectiveDateTime"),
+            "component": get_field(event, "component", kind=list),
+        }
+        invalid = [name for name, value in fields.items() if value is None]
+        if invalid:
             return {
                 "statusCode": 400,
                 "body": json.dumps(
-                    {"error": f"Missing required fields: {', '.join(missing)}"}
+                    {"error": f"Missing or invalid fields: {', '.join(invalid)}"}
                 ),
             }
 
         item = {
-            "PK": f"PATIENT#{event['subject']['reference'].split('/')[1]}",
-            "SK": f"OBSERVATION#{event['effectiveDateTime']}#{event['id']}",
+            "PK": f"PATIENT#{fields['subject.reference']}",
+            "SK": f"OBSERVATION#{fields['effectiveDateTime']}#{fields['id']}",
             "resourceType": "Observation",
-            "status": event["status"],
-            "category": event["category"][0]["coding"][0]["display"],
-            "code": event["code"]["coding"][0]["display"],
-            "encounter": event["encounter"]["reference"],
-            "effectiveDateTime": event["effectiveDateTime"],
+            "status": fields["status"],
+            "category": fields["category[0].coding[0].display"],
+            "code": fields["code.coding[0].display"],
+            "encounter": f"Encounter/{fields['encounter.reference']}",
+            "effectiveDateTime": fields["effectiveDateTime"],
             "components": json.loads(
-                json.dumps(event["component"]), parse_float=Decimal
+                json.dumps(fields["component"]), parse_float=Decimal
             ),
         }
 

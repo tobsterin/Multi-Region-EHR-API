@@ -421,6 +421,8 @@ Each is enforced structurally rather than by convention.
 
 **Unauthorised access** — Cognito JWT authorisation, Cognito groups and least-privilege IAM restrict patient-data routes to clinicians, fail-closed. Auditors authenticate successfully and are still refused.
 
+**Malformed input** — the write and update handlers accept one form of each field and reject anything else with a 400 naming the field. A reference must be relative, such as `Patient/<id>`. An update must target its own record type, and is refused if it tries to change a field that can't be changed. Bad input cannot crash a handler, be saved under the wrong key or in a different shape from the original write, or reach the registrar in a shape that would stall its stream.
+
 ### Still to implement
 
 The largest gap is auditing: the prototype has CloudWatch application logs and no access trail. Everything below is ordered by how much it matters, not by effort.

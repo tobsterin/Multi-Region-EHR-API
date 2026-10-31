@@ -3,7 +3,14 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
-from ehr_helpers import parse_groups
+from ehr_helpers import (
+    coding,
+    fhir_id,
+    get_field,
+    parse_groups,
+    reference_id,
+    supplied,
+)
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
@@ -28,41 +35,56 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "Request body is not valid JSON"}),
             }
+    if not isinstance(event, dict):
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Request body must be a JSON object"}),
+        }
 
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type}")
 
     if resource_type == "Encounter":
-        required = ["id", "subject", "status", "serviceProvider", "type"]
-        missing = [f for f in required if not event.get(f)]
-        period = event.get("period")
-        if not isinstance(period, dict) or not period.get("start"):
-            missing.append("period.start")
-        if missing:
+        # Each required field in the one form we accept; None if missing or in any other form
+        fields = {
+            "id": fhir_id(event.get("id")),
+            "subject.reference": reference_id(event.get("subject"), "Patient"),
+            "status": get_field(event, "status"),
+            "period.start": get_field(event, "period", "start"),
+            "serviceProvider.display": get_field(event, "serviceProvider", "display"),
+            "type[0].text": get_field(event, "type", 0, "text"),
+        }
+        invalid = [name for name, value in fields.items() if value is None]
+
+        # Optional fields may be left out, but if sent must be in the one form we accept
+        end = get_field(event, "period", "end")
+        if supplied(event, "period", "end") and not end:
+            invalid.append("period.end")
+        encounter_class = coding(event.get("class"))
+        if supplied(event, "class") and not encounter_class:
+            invalid.append("class")
+        practitioner = get_field(event, "generalPractitioner", 0, "display")
+        if supplied(event, "generalPractitioner") and not practitioner:
+            invalid.append("generalPractitioner[0].display")
+
+        if invalid:
             return {
                 "statusCode": 400,
                 "body": json.dumps(
-                    {"error": f"Missing required fields: {', '.join(missing)}"}
+                    {"error": f"Missing or invalid fields: {', '.join(invalid)}"}
                 ),
             }
 
         item = {
-            "PK": f"PATIENT#{event['subject']['reference'].split('/')[1]}",
-            "SK": f"ENCOUNTER#{event['period']['start']}#{event['id']}",
+            "PK": f"PATIENT#{fields['subject.reference']}",
+            "SK": f"ENCOUNTER#{fields['period.start']}#{fields['id']}",
             "resourceType": "Encounter",
-            "status": event["status"],
-            "period": {
-                "start": event["period"]["start"],
-                "end": event["period"].get("end"),
-            },
-            "serviceProvider": event["serviceProvider"]["display"],
-            "class": {
-                "system": event.get("class", {}).get("system"),
-                "code": event.get("class", {}).get("code"),
-                "display": event.get("class", {}).get("display"),
-            },
-            "type": event["type"][0]["text"],
-            "generalPractitioner": event.get("generalPractitioner"),
+            "status": fields["status"],
+            "period": {"start": fields["period.start"], "end": end},
+            "serviceProvider": fields["serviceProvider.display"],
+            "class": encounter_class or {"system": None, "code": None, "display": None},
+            "type": fields["type[0].text"],
+            "generalPractitioner": practitioner,
         }
         # To prevent accidental overwrite
         try:
