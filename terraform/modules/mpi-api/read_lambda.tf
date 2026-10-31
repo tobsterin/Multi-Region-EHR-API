@@ -1,7 +1,7 @@
 data "archive_file" "mpi_read_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/read_mpi.py"
-  output_path = "${path.module}/dist/read_mpi.zip"
+  output_path = "${path.module}/dist/read_mpi-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "mpi_read_lambda" {

@@ -15,7 +15,8 @@
           "code": "185349003",
           "display": "Encounter for check up"
         }
-      ]
+      ],
+      "text": "Encounter for check up"
     }
   ],
   "subject": {
@@ -36,5 +37,8 @@
         "display": "Dr. A. Mensah"
       }
     }
-  ]
+  ],
+  "serviceProvider": {
+    "display": "Richmond Green Surgery"
+  }
 }

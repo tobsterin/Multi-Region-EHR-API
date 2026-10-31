@@ -3,7 +3,7 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
-from ehr_helpers import parse_groups
+from ehr_helpers import fhir_id, get_field, parse_groups, sort_key, supplied
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
@@ -28,30 +28,55 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "Request body is not valid JSON"}),
             }
+    if not isinstance(event, dict):
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Request body must be a JSON object"}),
+        }
 
-    patient_id = event.get("patient_id")
+    # The record to change, keyed as the write handler stored it. The clinical table
+    # also holds encounters, so the SK must be an observation's.
+    patient_id = fhir_id(event.get("patient_id"))
+    sk = sort_key(event.get("SK"), "OBSERVATION")
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type} update")
 
-    if not patient_id or not event.get("SK"):
+    if not patient_id or not sk:
         return {
             "statusCode": 400,
-            "body": json.dumps({"error": "Missing patient_id or SK"}),
+            "body": json.dumps({"error": "Missing or invalid patient_id or SK"}),
         }
 
     if resource_type == "Observation":
-        updates = {k: event.get(k) for k in ["status"] if event.get(k) is not None}
-        if not updates:
+        # Only status can change. Anything else is refused, so a change the client
+        # asked for is never ignored.
+        not_updatable = sorted(
+            set(event) - {"resourceType", "patient_id", "SK", "status"}
+        )
+        if not_updatable:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": f"Fields cannot be updated: {', '.join(not_updatable)}"}
+                ),
+            }
+        if not supplied(event, "status"):
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": "No valid fields to update"}),
             }
+        status = get_field(event, "status")
+        if not status:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Missing or invalid fields: status"}),
+            }
         try:
             table.update_item(
-                Key={"PK": f"PATIENT#{patient_id}", "SK": event.get("SK")},
+                Key={"PK": f"PATIENT#{patient_id}", "SK": sk},
                 ExpressionAttributeNames={"#s": "status"},
                 UpdateExpression="SET #s = :stat",
-                ExpressionAttributeValues={":stat": event.get("status")},
+                ExpressionAttributeValues={":stat": status},
                 ConditionExpression="attribute_exists(SK)",
             )
         except ClientError as e:
@@ -77,7 +102,5 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps(
-            {"message": f"{resource_type} updated", "id": event.get("SK")}
-        ),
+        "body": json.dumps({"message": f"{resource_type} updated", "id": sk}),
     }

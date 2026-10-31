@@ -3,7 +3,7 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
-from ehr_helpers import parse_groups
+from ehr_helpers import fhir_id, get_field, parse_groups, supplied
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
@@ -20,7 +20,12 @@ def lambda_handler(event, context):
             ),
         }
 
-    patient_id = event.get("pathParameters", {}).get("patient_id")
+    patient_id = fhir_id((event.get("pathParameters") or {}).get("patient_id"))
+    if not patient_id:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Missing or invalid patient_id"}),
+        }
 
     if "body" in event:
         try:
@@ -30,16 +35,43 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "Request body is not valid JSON"}),
             }
+    if not isinstance(event, dict):
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Request body must be a JSON object"}),
+        }
 
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type} update")
 
     if resource_type == "Patient":
-        updates = {
-            k: event.get(k)
-            for k in ["address", "generalPractitioner"]
-            if event.get(k) is not None
+        # Everything this handler can change, in the form the write handler stores it;
+        # None if malformed. The national IDs can't change: the MPI registrar only
+        # reads them when a patient is first registered.
+        fields = {
+            "address": get_field(event, "address", kind=list),
+            "generalPractitioner": get_field(
+                event, "generalPractitioner", 0, "display"
+            ),
         }
+        # Anything else is refused, so a change the client asked for is never ignored
+        not_updatable = sorted(set(event) - {"resourceType"} - set(fields))
+        if not_updatable:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": f"Fields cannot be updated: {', '.join(not_updatable)}"}
+                ),
+            }
+        updates = {k: v for k, v in fields.items() if supplied(event, k)}
+        invalid = [k for k, v in updates.items() if v is None]
+        if invalid:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": f"Missing or invalid fields: {', '.join(invalid)}"}
+                ),
+            }
         if not updates:
             return {
                 "statusCode": 400,

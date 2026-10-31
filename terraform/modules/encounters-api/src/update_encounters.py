@@ -3,7 +3,7 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
-from ehr_helpers import parse_groups
+from ehr_helpers import coding, fhir_id, get_field, parse_groups, sort_key, supplied
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
@@ -28,27 +28,59 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "Request body is not valid JSON"}),
             }
+    if not isinstance(event, dict):
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Request body must be a JSON object"}),
+        }
 
-    patient_id = event.get("patient_id")
+    # The record to change, keyed as the write handler stored it. The clinical table
+    # also holds observations, so the SK must be an encounter's.
+    patient_id = fhir_id(event.get("patient_id"))
+    sk = sort_key(event.get("SK"), "ENCOUNTER")
     resource_type = event.get("resourceType")
     print(f"Processing {resource_type} update")
 
-    if not patient_id or not event.get("SK"):
+    if not patient_id or not sk:
         return {
             "statusCode": 400,
-            "body": json.dumps({"error": "Missing patient_id or SK"}),
+            "body": json.dumps({"error": "Missing or invalid patient_id or SK"}),
         }
 
     if resource_type == "Encounter":
+        # Everything this handler can change, in the form the write handler stores it;
+        # None if malformed. Each is sent under its top-level name, e.g. "period".
         fields = {
-            "status": event.get("status"),
-            "period.end": event.get("period", {}).get("end"),
-            "serviceProvider": event.get("serviceProvider"),
-            "class": event.get("class"),
-            "type": event.get("type"),
-            "generalPractitioner": event.get("generalPractitioner"),
+            "status": get_field(event, "status"),
+            "period.end": get_field(event, "period", "end"),
+            "serviceProvider": get_field(event, "serviceProvider", "display"),
+            "class": coding(event.get("class")),
+            "type": get_field(event, "type", 0, "text"),
+            "generalPractitioner": get_field(
+                event, "generalPractitioner", 0, "display"
+            ),
         }
-        updates = {k: v for k, v in fields.items() if v is not None}
+        allowed = {"resourceType", "patient_id", "SK"} | {
+            k.split(".")[0] for k in fields
+        }
+        # Anything else is refused, so a change the client asked for is never ignored
+        not_updatable = sorted(set(event) - allowed)
+        if not_updatable:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": f"Fields cannot be updated: {', '.join(not_updatable)}"}
+                ),
+            }
+        updates = {k: v for k, v in fields.items() if supplied(event, k.split(".")[0])}
+        invalid = [k for k, v in updates.items() if v is None]
+        if invalid:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": f"Missing or invalid fields: {', '.join(invalid)}"}
+                ),
+            }
         if not updates:
             return {
                 "statusCode": 400,
@@ -70,7 +102,7 @@ def lambda_handler(event, context):
 
         try:
             table.update_item(
-                Key={"PK": f"PATIENT#{patient_id}", "SK": event.get("SK")},
+                Key={"PK": f"PATIENT#{patient_id}", "SK": sk},
                 UpdateExpression="SET " + ", ".join(parts),
                 ExpressionAttributeNames=names,
                 ExpressionAttributeValues=values,
@@ -99,7 +131,5 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps(
-            {"message": f"{resource_type} updated", "id": event.get("SK")}
-        ),
+        "body": json.dumps({"message": f"{resource_type} updated", "id": sk}),
     }

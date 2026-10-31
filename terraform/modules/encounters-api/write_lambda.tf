@@ -1,7 +1,7 @@
 data "archive_file" "encounters_write_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/write_encounters.py"
-  output_path = "${path.module}/dist/write_encounters.zip"
+  output_path = "${path.module}/dist/write_encounters-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "encounters_write_lambda" {

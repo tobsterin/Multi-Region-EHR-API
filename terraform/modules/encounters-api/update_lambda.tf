@@ -1,7 +1,7 @@
 data "archive_file" "encounters_update_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/update_encounters.py"
-  output_path = "${path.module}/dist/update_encounters.zip"
+  output_path = "${path.module}/dist/update_encounters-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "encounters_update_lambda" {

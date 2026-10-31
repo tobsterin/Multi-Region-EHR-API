@@ -1,7 +1,7 @@
 data "archive_file" "patient_update_lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/src/update_patient.py"
-  output_path = "${path.module}/dist/update_patient.zip"
+  output_path = "${path.module}/dist/update_patient-${var.region_suffix}.zip"
 }
 
 resource "aws_lambda_function" "patient_update_lambda" {

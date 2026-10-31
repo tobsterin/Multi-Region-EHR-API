@@ -12,3 +12,5 @@ crash.log
 *.auto.tfvars
 dist/
 .venv/
+# Personal notes with live endpoints
+*.local.md

@@ -148,5 +148,5 @@
 
   <!-- footer -->
   <text x="44" y="410" fill="#7488A8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">the uuid crosses both boundaries · the local patient id never leaves the region that issued it</text>
-  <text x="1156" y="410" text-anchor="end" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">Multi-Region-EHR-API · §4 data flow</text>
+  <text x="1156" y="410" text-anchor="end" fill="#465877" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11">Multi-Region-EHR-API · §7 data flow</text>
 </svg>
