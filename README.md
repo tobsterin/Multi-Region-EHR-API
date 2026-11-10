@@ -357,7 +357,7 @@ Encounter and Observation resources share a key structure, so records can be que
 ## 7. Data Flow — Clinic Visit
 
 <img src="./assets/federated-read.svg" width="100%"
-     alt="The federated read path: a clinician in France resolves a patient UUID in the global MPI, exchanges it for a local patient id in the UK regional mapping table, fetches the clinical record from the UK region, and holds it in memory only" />
+     alt="The planned federated read path: starting from a patient's French record, the global MPI resolves a patient UUID and lists every region it is registered in; each region exchanges the UUID for its own local patient id, reads its clinical table and returns the records, which the requesting region combines in memory only" />
 
 The regional mapping tables are the hinge of the read path.
 
